@@ -4,7 +4,7 @@
 
 This is the official repo for the paper [Learning Controllable Adaptive Simulation for Multi-resolution Physics](https://arxiv.org/abs/2206.07681) (Tailin Wu*, Takashi Maruyama*, Qingqing Zhao*, Gordon Wetzstein, Jure Leskovec, ICLR 2023 spotlight). It is the first fully DL-based surrogate model that jointly learns the evolution model, and optimizes spatial resolutions to reduce computational cost, learned via reinforcement learning. We demonstrate that LAMP is able to adaptively trade-off computation to improve long-term prediction error, by performing spatial refinement and coarsening of the mesh. LAMP outperforms state-of-the-art (SOTA) deep learning surrogate models, with up to 39.3% error reduction for 1D nonlinear PDEs, and outperforms SOTA MeshGraphNets + Adaptive Mesh Refinement in 2D mesh-based simulations.
 
-<a href="url"><img src="https://github.com/snap-stanford/le_pde/blob/master/assets/lamp.png" align="center" width="700" ></a>
+<a href="url"><img src="https://github.com/snap-stanford/lamp/blob/master/assets/lamp_architecture.png" align="center" width="700" ></a>
 
 # Installation
 

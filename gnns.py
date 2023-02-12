@@ -5449,7 +5449,7 @@ class GNNPolicyAgent_Sampling(GNNRemesherPolicy):
                 x_coords = torchmesh['history']['n0'][1] #
                 torchmesh = attrdict_to_pygdict(torchmesh, is_flatten=True, use_pos=use_pos)   
                 torchmesh.batch = batch
-                x_phy = torchmesh.x.clone() 
+                x_phy = torchmesh.x.clone()
                 if policy_input_feature=="velocity":
                     if hasattr(torchmesh, "onehot_list"):
                         onehot = torchmesh.onehot_list[0]
@@ -5464,7 +5464,8 @@ class GNNPolicyAgent_Sampling(GNNRemesherPolicy):
             else:
                 batch = torchmesh.batch.clone()
                 torchmesh = deepsnap_to_pyg(torchmesh, is_flatten=True, use_pos=use_pos)
-                x_coords = torchmesh.x_pos.clone()        
+                x_coords = torchmesh.x_pos.clone()
+                x_phy = torchmesh.x.clone()
         elif hasattr(torchmesh, "x"):
             batch = torchmesh.batch.clone()
             x_coords = torchmesh.history[-1]
@@ -5480,7 +5481,7 @@ class GNNPolicyAgent_Sampling(GNNRemesherPolicy):
                         torchmesh.x = velocity.clone() 
                     torchmesh.x = torch.cat([torchmesh.x, onehot, kinematics], dim=-1)
             elif policy_input_feature=="coords":
-                torchmesh.x = torchmesh.history[-1].clone() 
+                torchmesh.x = torchmesh.history[-1].clone()
 
         self.current_batch = int(batch.max()+1)
         self.device = batch.device

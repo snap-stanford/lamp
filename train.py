@@ -278,7 +278,7 @@ if args.algo.startswith("rlgnnremesher") or args.algo.startswith("srlgnnremesher
     device = get_device(args)
     loaded_dirname = EXP_PATH + args.load_dirname
     filenames = filter_filename(loaded_dirname, include=[args.load_filename])
-    assert len(filenames) == 1, f"There are {len(filenames)} files that contains the str {args.load_filename}. Re-check the argument of --load_dirname and --load_filename."
+    assert len(filenames) == 1, f"There are {len(filenames)} files under ./results/{args.load_dirname} that contain the str {args.load_filename}. Re-check the argument of --load_dirname and --load_filename."
     loaded_filename = os.path.join(loaded_dirname, filenames[0])
     data_record_load = pload(loaded_filename)
 

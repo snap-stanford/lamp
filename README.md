@@ -2,7 +2,7 @@
 
 [Paper](https://openreview.net/forum?id=PbfgkZ2HdbE) | [Poster](https://github.com/snap-stanford/lamp/blob/master/assets/lamp_poster.pdf) | [Slide](https://docs.google.com/presentation/d/1cMRGe2qNIrzSNRTUtbsVUod_PvyhDHcHzEa8wfxiQsw/edit?usp=sharing) | [Project Page](https://snap.stanford.edu/lamp/)
 
-This is the official repo for the paper [Learning Controllable Adaptive Simulation for Multi-resolution Physics](https://arxiv.org/abs/2206.07681) (Tailin Wu*, Takashi Maruyama*, Qingqing Zhao*, Gordon Wetzstein, Jure Leskovec, ICLR 2023 <span style="color:red">*spotlight*</span>). It is the first fully DL-based surrogate model that jointly learns the evolution model, and optimizes spatial resolutions to reduce computational cost, learned via reinforcement learning. We demonstrate that LAMP is able to adaptively trade-off computation to improve long-term prediction error, by performing spatial refinement and coarsening of the mesh. LAMP outperforms state-of-the-art (SOTA) deep learning surrogate models, with up to 39.3% error reduction for 1D nonlinear PDEs, and outperforms SOTA MeshGraphNets + Adaptive Mesh Refinement in 2D mesh-based simulations.
+This is the official repo for the paper [Learning Controllable Adaptive Simulation for Multi-resolution Physics](https://arxiv.org/abs/2206.07681) (Tailin Wu*, Takashi Maruyama*, Qingqing Zhao*, Gordon Wetzstein, Jure Leskovec, ICLR 2023 **spotlight**). It is the first fully DL-based surrogate model that jointly learns the evolution model, and optimizes spatial resolutions to reduce computational cost, learned via reinforcement learning. We demonstrate that LAMP is able to adaptively trade-off computation to improve long-term prediction error, by performing spatial refinement and coarsening of the mesh. LAMP outperforms state-of-the-art (SOTA) deep learning surrogate models, with up to 39.3% error reduction for 1D nonlinear PDEs, and outperforms SOTA MeshGraphNets + Adaptive Mesh Refinement in 2D mesh-based simulations.
 
 <a href="url"><img src="https://github.com/snap-stanford/lamp/blob/master/assets/lamp_architecture.png" align="center" width="700" ></a>
 
@@ -49,12 +49,23 @@ The dataset files can be downloaded via [this link](https://drive.google.com/dri
 
 Below we provide example commands for training LAMP. For all the commands that reproduce the experiments in the paper, see the [results/README.md](https://github.com/snap-stanford/lamp/tree/master/results).
 
-An example 1D training command is:
+## 1D nonlinear PDE:
+
+First, pre-train the evolution model for 1D:
 
 ```code
 python train.py --exp_id=evo-1d --date_time=2023-01-01 --dataset=mppde1df-E2-100-nt-250-nx-200 --time_interval=1 --data_dropout=node:0-0.3:0.1 --latent_size=64 --n_train=-1 --save_interval=5 --test_interval=5 --algo=gnnremesher --rl_coefs=None --input_steps=1 --act_name=silu --multi_step=1^2:0.1^3:0.1^4:0.1 --temporal_bundle_steps=25 --use_grads=False --is_y_diff=False --loss_type=mse --batch_size=16 --val_batch_size=16 --epochs=50 --opt=adam --weight_decay=0 --seed=0 --id=0 --verbose=1 --n_workers=0 --gpuid=0
 ```
 
+Then, jointly training the remeshing model via RL and the evolution model:
+
+
+### 2D mesh-based simulation:
+
+First, pre-train the evolution model for 2D:
+
+
+Then, jointly training the remeshing model via RL and the evolution model:
 
 # Inference
 

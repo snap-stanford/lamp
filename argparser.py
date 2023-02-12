@@ -130,6 +130,11 @@ def arg_parse():
                         help='Number of graph convolution layers.')
     parser.add_argument('--dropout', type=float,
                         help='The dropout ratio.')
+    
+    parser.add_argument('--static_latent_size', type=int, default=0,
+                        help='dimension of latent vector of static featurs.')
+    parser.add_argument('--static_encoder_type', type=str, default="None",
+                        help='encoder type of converting static featurs to latent vectors.')
 
     ## For gnnremesher:
     parser.add_argument('--noise_amp', type=float, help='std of gaussian noise added to corrupt fluid models input')   
@@ -310,6 +315,10 @@ def arg_parse():
         use_fineres_data=False,
         noise_amp=0.,
         uncertainty_mode="None",
+
+        ## Static features:
+        static_latent_size=0,
+        static_encoder_type="None",
 
         ## Training:
         is_pretrain_autoencode=False,

@@ -1,0 +1,7 @@
+wandb
+deepsnap==0.2.1
+matplotlib
+tqdm
+scipy
+h5py
+pandas

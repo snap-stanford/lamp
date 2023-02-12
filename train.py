@@ -19,9 +19,9 @@ import sys, os
 sys.path.append(os.path.join(os.path.dirname("__file__"), '..'))
 sys.path.append(os.path.join(os.path.dirname("__file__"), '..', '..'))
 from lamp.argparser import arg_parse
-from lamp.models import load_data, get_model, load_model, unittest_model, build_optimizer, test
+from lamp.models import get_model, load_model, unittest_model, build_optimizer, test
 from lamp.gnns import GNNRemesher
-from lamp.datasets.arcsimmesh_dataset import ArcsimMesh
+from lamp.datasets.load_dataset import load_data
 from lamp.pytorch_net.util import Attr_Dict, Batch, filter_filename, pload, pdump, Printer, get_time, init_args, update_args, clip_grad, set_seed, update_dict, filter_kwargs, plot_vectors, plot_matrices, make_dir, get_pdict, to_np_array, record_data, make_dir, Early_Stopping, str2bool, get_filename_short, print_banner, get_num_params, ddeepcopy as deepcopy, write_to_config
 from lamp.utils import EXP_PATH, MeshBatch
 from lamp.utils import p, update_legacy_default_hyperparam, get_grad_norm, loss_op_core, get_model_dict, get_elements, is_diagnose, get_keys_values, loss_op, to_tuple_shape, parse_multi_step, get_device, seed_everything
@@ -199,8 +199,6 @@ try:
 
         #args.data_dropout = "node:0-0.4"
         args.use_pos = False
-        # args.load_dirname = "tailin-multi_2022-8-27"
-        # args.load_filename = "mppde1de-E2-400-nt-1000-nx-400_train_-1_algo_gnnremesher_ebm_False_ebmt_cd_enc_cnn-s_evo_cnn_act_elu_hid_16_lo_mse_recef_1_conef_1_nconv_4_nlat_2_clat_1_lf_True_reg_None_id_0_Hash_ufU6+M1A_ampere3.p"
         args.load_filename = "IHvBKQ8K_ampere3"
         args.rl_coefs = "reward:0.1"
 
@@ -345,20 +343,11 @@ short_str_dict = {
     "dataset": "",
     "n_train": "train",
     "algo": "algo",
-    "is_ebm": "ebm",
-    "ebm_train_mode": "ebmt",
-    "encoder_type": "enc",
-    "evo_conv_type": "evo",
     "act_name": "act",
     "latent_size": "hid",
+    "multi_step": "mt",
+    "temporal_bundle_steps": "tb",
     "loss_type": "lo",
-    "recons_coef": "recef",
-    "consistency_coef": "conef",
-    "n_conv_blocks": "nconv",
-    "n_latent_levs": "nlat",
-    "n_conv_layers_latent": "clat",
-    "is_latent_flatten": "lf",
-    "reg_type": "reg",
     "gpuid": "gpu",
     "id": "id",
 }
@@ -602,13 +591,10 @@ while epoch < args.epochs:
         pdb.set_trace()
     if args.lr_scheduler_type == "rop":
         scheduler.step(val_loss)
-        kwargs["scheduler_disc"].step(model.info["loss_disc"])
     elif args.lr_scheduler_type == "None":
         pass
     else:
         scheduler.step()
-        if args.disc_coef > 0 or args.disc_coef == -1:
-            kwargs["scheduler_disc"].step()
     record_data(data_record, [epoch, train_loss], ["epoch", "train_loss"])
     record_data(data_record, list(train_info.values()), ["{}_tr".format(key) for key in train_info])
     p.print("Epoch {:03d}:     Train: {:.4e}  for exp {}".format(epoch + 1, train_loss, filename.split("_")[-2]), end="")

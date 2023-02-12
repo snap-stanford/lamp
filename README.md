@@ -75,6 +75,10 @@ Then, jointly training the remeshing model via RL and the evolution model:
 # Inference
 
 
+# Related Projects:
+
+* [LE-PDE](https://github.com/snap-stanford/le_pde) (NeurIPS 2022): Accelerate the simulation and inverse optimization of PDEs. Compared to state-of-the-art deep learning-based surrogate models (e.g., FNO, MP-PDE), it is up to 15x improvement in speed, while achieving competitive accuracy.
+
 # Citation
 If you find our work and/or our code useful, please cite us via:
 

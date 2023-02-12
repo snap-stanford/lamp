@@ -278,7 +278,7 @@ if args.algo.startswith("rlgnnremesher") or args.algo.startswith("srlgnnremesher
     device = get_device(args)
     loaded_dirname = EXP_PATH + args.load_dirname
     filenames = filter_filename(loaded_dirname, include=[args.load_filename])
-    assert len(filenames) == 1
+    assert len(filenames) == 1, f"There are {len(filenames)} files that contains the str {args.load_filename}. Re-check the argument of --load_dirname and --load_filename."
     loaded_filename = os.path.join(loaded_dirname, filenames[0])
     data_record_load = pload(loaded_filename)
 
@@ -331,7 +331,7 @@ if args.rl_is_finetune_evolution:
         args, params=None,
         separate_params=opt_params,
     )
-        
+
 n_params_model = get_num_params(model)
 p.print("n_params_model: {}".format(n_params_model), end="")
 machine_name = os.uname()[1].split('.')[0]
@@ -441,7 +441,7 @@ while epoch < args.epochs:
                 data_fine = next(dataloader_iterator)
         else:
             data_fine=None
-        
+
         t_end = time.time()
         if args.verbose >= 2 and j % 100 == 0:
             p.print(f"Data loading time: {t_end - t_start:.6f}")
@@ -474,8 +474,8 @@ while epoch < args.epochs:
             
         if (not(opt_evl)):
             data_fine = None
-        
-            
+
+
         args_core = update_args(args, "multi_step", "1") if epoch < args.multi_step_start_epoch else args
         loss = model.get_loss(
             data,
@@ -517,7 +517,7 @@ while epoch < args.epochs:
 
                 if opt_evl:
                     opt_evolution.step()
-                    p.print("8.2b", precision="millisecond", is_silent=args.is_timing<1, avg_window=1)        
+                    p.print("8.2b", precision="millisecond", is_silent=args.is_timing<1, avg_window=1)
 
             total_loss = total_loss + loss.item()
             count += 1

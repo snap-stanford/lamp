@@ -20,6 +20,8 @@ We demonstrate that LAMP is able to adaptively trade-off computation to improve 
 git submodule init; git submodule update
 ```
 
+(If showing error of no permission, need to first add a new SSH key to your GitHub account.)
+
 2. Install dependencies.
 
 First, create a new environment using [conda](https://docs.conda.io/en/latest/miniconda.html) (with python >= 3.7). Then install pytorch, torch-geometric and other dependencies as follows (the repository is run with the following dependencies. Other version of torch-geometric or deepsnap may work but there is no guarentee.)
@@ -94,7 +96,7 @@ Then, jointly training the remeshing model via RL and the evolution model:
 * For 2D experiments, to analyze the full model for LAMP and the baselines, use [analysis_2D_full.ipynb](https://github.com/snap-stanford/lamp/blob/master/analysis_2d_full.ipynb).
 
 
-## Related Projects:
+## Related Projects
 
 * [LE-PDE](https://github.com/snap-stanford/le_pde) (NeurIPS 2022): Accelerate the simulation and inverse optimization of PDEs. Compared to state-of-the-art deep learning-based surrogate models (e.g., FNO, MP-PDE), it is up to 15x improvement in speed, while achieving competitive accuracy.
 

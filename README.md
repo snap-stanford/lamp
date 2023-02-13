@@ -1,4 +1,4 @@
-## LAMP: Learning Controllable Adaptive Simulation for Multi-resolution Physics
+# LAMP: Learning Controllable Adaptive Simulation for Multi-resolution Physics
 
 [Paper](https://openreview.net/forum?id=PbfgkZ2HdbE) | [Poster](https://github.com/snap-stanford/lamp/blob/master/assets/lamp_poster.pdf) | [Slide](https://docs.google.com/presentation/d/1cMRGe2qNIrzSNRTUtbsVUod_PvyhDHcHzEa8wfxiQsw/edit?usp=sharing) | [Project Page](https://snap.stanford.edu/lamp/)
 

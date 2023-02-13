@@ -96,11 +96,10 @@ Then, jointly training the remeshing model via RL and the evolution model:
 If you find our work and/or our code useful, please cite us via:
 
 ```bibtex
-@inproceedings{
-wu2023learning,
+@inproceedings{wu2023learning,
 title={Learning Controllable Adaptive Simulation for Multi-resolution Physics},
 author={Tailin Wu and Takashi Maruyama and Qingqing Zhao and Gordon Wetzstein and Jure Leskovec},
-booktitle={The Eleventh International Conference on Learning Representations },
+booktitle={The Eleventh International Conference on Learning Representations},
 year={2023},
 url={https://openreview.net/forum?id=PbfgkZ2HdbE}
 }

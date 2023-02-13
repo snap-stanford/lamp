@@ -500,127 +500,6 @@ def add_edge_normal_curvature(data_arcsimmesh):
 
 ##>>> Original util.py:
 
-def get_message_types(border=False, standard=False):
-
-    message_types = {}
-    
-    if standard:
-        standard_messages = {
-            '00' : ('0', '00', '0'), 
-            '01' : ('0', '01', '1'), 
-            '02' : ('0', '02', '2'), 
-            '10' : ('1', '10', '0'), 
-            '20' : ('2', '20', '0')
-        }
-        message_types.update(standard_messages)
-    
-    if border:
-        border_messages = {
-            '30' : ('3', '30', '0'),
-            '31' : ('3', '31', '1'),
-            '32' : ('3', '32', '2'),
-            '33' : ('3', '33', '3'),
-            '23' : ('2', '23', '3'),
-            '13' : ('1', '13', '3'),
-            '03' : ('0', '03', '3')
-        }
-        message_types.update(border_messages)
-    
-    return message_types
-
-def get_message_types_subset(nt, mts, target=True):
-    idx = 0
-    if target:
-        idx = 1
-    mts_subset = []
-    for key in mts.keys():
-        if key[idx] == nt:
-            mts_subset.append(mts[key])
-    return mts_subset
-    
-
-def rewire_field_edges(edge_index, width):
-    
-    mts = get_message_types(border=True, standard=True)
-    num_fp = int(max(edge_index[mts['00']][0]))
-    #downshift fp idedge_indexs 
-    edge_index[mts['00']][0] -= width
-    edge_index[mts['00']][1] -= width
-    #splice field edges 
-    edge_index[mts['00']] = edge_index[mts['00']][:, (width * 2) : - (width * 2)]
-    edge_index[mts['03']] = torch.tensor([[0, num_fp-(width*2)], [width-1, width]])
-    edge_index[mts['30']] = torch.tensor([[width-1, width], [0, num_fp-(width*2)]])
-
-    #create border-border edges
-    source, target = [], []
-    for i in range(width * 2):
-        if i == 0:
-            source += [i]
-            target += [i + 1]
-        elif i == width * 2 - 1:
-            source += [i]
-            target += [i - 1]
-        else:
-            source += [i, i]
-            target += [i-1, i+1]
-
-    edge_index[mts['33']] = torch.tensor([source, target])
-    return edge_index
-
-def rewire_particle_edges(edge_index, width):
-    #TODO: make more efficient/ vectorized
-    
-    mts = get_message_types(border=True, standard=True)
-    num_fp = edge_index[mts['00']].shape[1]//2 + 1
-    field_idx_mappings = {idx : idx for idx in range(width)}
-    field_idx_mappings.update({idx : width + i for i, idx in enumerate(range(num_fp + width, num_fp + width*2))})
-
-    for nt in ['1', '2']:
-        in_mt =  '0' + nt
-        border_idxs, field_idxs = [[], []], [[], []]
-        for i, fp_idx in enumerate(edge_index[mts[in_mt]][0]):
-            if fp_idx in field_idx_mappings.keys():
-                border_idxs[0].append(field_idx_mappings[fp_idx])
-                border_idxs[1].append(edge_index[mts[in_mt]][1][i])
-            else:
-                field_idxs[0].append(fp_idx)
-                field_idxs[1].append(edge_index[mts[in_mt]][1][i])
-        
-        if len(border_idxs[0]) > 0:
-            edge_index[mts[in_mt]] = torch.tensor(field_idxs).long()
-            edge_index[mts[nt + '0']] = torch.tensor([field_idxs[1], field_idxs[0]]).long()
-
-            edge_index[mts['3' + nt]] = torch.tensor(border_idxs).long()
-            edge_index[mts[nt + '3']] = torch.tensor([border_idxs[1], border_idxs[0]]).long()
-    return edge_index
-
-                
-
-def add_border(x, width, edge=False):
-    #TODO: currently does not work for rollout bc assumes graph starts with no border nodes acccounted for
-
-    if type(x) == dict:
-        if not edge:
-            #splice features
-            x['3'] = torch.cat((x['0'][:width], x['0'][-width:]), 0)
-            x['0'] = x['0'][width:-width]
-            return x
-        else:
-            #rewire edges
-            x = rewire_field_edges(x, width)
-            x = rewire_particle_edges(x, width)
-            return x
-            
-    x.node_feature = add_border(x.node_feature, width)
-    x.node_label = add_border(x.node_label, width)
-    x.edge_index = add_border(x.edge_index, width, edge=True)
-
-    return x
-
-
-
-
-#TEST ME!
 def test_graph_equivalence(graph1, graph2):
     
     equiv = True
@@ -761,17 +640,6 @@ class Apply_Activation(nn.Module):
 #             dim_dict_final[i] = dim_lcm
 #     input_shape_final = tuple(list(dim_dict_final.values()))
 #     return input_shape_final
-
-
-def get_LCM_input_shape(input_shape):
-    input_shape_dict = dict(input_shape)
-    key_max = None
-    shape_len_max = -np.Inf
-    for key, shape in input_shape_dict.items():
-        if len(shape) > shape_len_max:
-            key_max = key
-            shape_len_max = len(shape)
-    return input_shape_dict[key_max]
 
 
 def expand_same_shape(x_list, input_shape_LCM):
@@ -1714,28 +1582,6 @@ def get_edge_index_kernel(pos_part, grid_pos, kernel_size, stride, padding, batc
     return edge_index, edge_attr, n_kern
 
 
-def stack_tuple_elements(list_of_tuples, dim=1):
-    """
-    Transform a list of tuples (with same format) into a tuple of stacked tensors, stacked over the list and along dimension dim.
-        input: List_of_tuples: [(z11, z12, ...), (z21, z22, ...), ...]
-        output: (torch.stack([z11, z21,...], dim),
-                 torch.stack([z12, z22,...], dim), ...)
-    """
-    List = [[] for _ in range(len(list_of_tuples[0]))]
-    for i in range(len(list_of_tuples)):  # info["latent_preds"]: [(z1,z2), (z1, z2)]
-        for j in range(len(list_of_tuples[0])):
-            List[j].append(list_of_tuples[i][j])
-    for j in range(len(List)):
-        if List[j][0] is not None:
-            List[j] = torch.stack(List[j], dim)
-        else:
-            # In case one position is None, due to is_latent_flatten=False:
-            for ele in List[j]:
-                assert ele is None
-            List[j] = None
-    return tuple(List)    # (z1_aug, z2_aug, ...)
-
-
 def add_noise(input, noise_amp):
     """Add independent Gaussian noise to each element of the tensor."""
     if not isinstance(input, tuple):
@@ -2222,254 +2068,6 @@ class MLP_Coupling(nn.Module):
         return x
 
 
-class MultiHeadAttnCoupling(nn.Module):
-    def __init__(
-        self,
-        input_size,
-        z_size,
-        d_tensor,
-        n_heads,
-        seq_len,
-    ):
-        super().__init__()
-        self.input_size = input_size
-        self.z_size = z_size
-        self.d_tensor = d_tensor
-        self.n_heads = n_heads
-        self.seq_len = seq_len
-        self.w_q = nn.Linear(z_size, d_tensor*n_heads*seq_len)
-        self.w_k = nn.Linear(input_size, d_tensor*n_heads*seq_len)
-        self.w_v = nn.Linear(input_size, d_tensor*n_heads*seq_len)
-        self.w_concat = nn.Linear(d_tensor*n_heads*seq_len, input_size)
-
-    def forward(self, x, z):
-        """
-        Args:
-            x: [*size, input_size]
-            z: [*size, z_size]
-        
-        Q, K, V: [*size, heads, seq_len, d_tensor]
-
-        Returns:
-            out: [*size, input_size]
-        """
-        size = z.shape[:2]
-        Q = self.w_q(z).view(*size, self.n_heads, self.seq_len, self.d_tensor)
-        K = self.w_k(x).view(*size, self.n_heads, self.seq_len, self.d_tensor)
-        V = self.w_v(x).view(*size, self.n_heads, self.seq_len, self.d_tensor)
-
-        attention = F.softmax((Q @ K.transpose(-1,-2)) / np.sqrt(self.d_tensor), dim=-1)  # [*size, heads, seq_len, seq_len]
-        out = attention @ V  # [*size, heads, seq_len, d_tensor]
-        out = out.view(*size, -1)
-        out = self.w_concat(out)
-        return out
-
-
-class EncoderLayerCoupling(nn.Module):
-    def __init__(
-        self,
-        input_size,
-        z_size,
-        d_tensor,
-        n_heads,
-        seq_len,
-        n_neurons,
-        act_name,
-        normalization_type="ln",
-        is_res=True,
-        drop_prob=0,
-    ):
-        super().__init__()
-        self.attn_layer = MultiHeadAttnCoupling(
-            input_size=input_size,
-            z_size=z_size,
-            d_tensor=d_tensor,
-            n_heads=n_heads,
-            seq_len=seq_len,
-        )
-        self.norm1 = get_normalization(normalization_type, input_size, n_groups=2)
-        self.drop_prob = drop_prob
-        self.act_name = act_name
-        self.normalization_type = normalization_type
-        self.is_res = is_res
-        if self.drop_prob > 0:
-            self.dropout1 = nn.Dropout(p=drop_prob)
-
-        self.ffn = MLP(
-            input_size=input_size,
-            n_neurons=n_neurons,
-            output_size=input_size,
-            n_layers=2,
-            act_name=act_name,
-        )
-        self.norm2 = get_normalization(normalization_type, input_size, n_groups=2)
-        if self.drop_prob > 0:
-            self.dropout2 = nn.Dropout(p=drop_prob)
-
-    def forward(self, x, z):
-        # 1. compute self attention
-        _x = x
-        x = self.attn_layer(x=x, z=z)
-        
-        # 2. add and norm
-        if self.is_res:
-            x = x + _x
-        if self.normalization_type in ["ln", "gn"]:
-            x = self.norm1(x)
-        if self.drop_prob > 0:
-            x = self.dropout1(x)
-        
-        # 3. positionwise feed forward network
-        _x = x
-        x = self.ffn(x)
-
-        # 4. add and norm
-        if self.is_res:
-            x = x + _x
-        if self.normalization_type in ["ln", "gn"]:
-            x = self.norm2(x)
-        if self.drop_prob > 0:
-            x = self.dropout2(x)
-        return x
-
-
-class MLP_Attn(nn.Module):
-    def __init__(
-        self,
-        input_size,
-        z_size,
-        n_neurons,
-        n_layers,
-        output_size,
-        d_tensor,
-        n_heads,
-        seq_len,
-        act_name="rational",
-        normalization_type="ln",
-        is_res=True,
-        last_layer_linear=True,
-    ):
-        super().__init__()
-        self.input_size = input_size
-        self.z_size = z_size
-        self.n_neurons = n_neurons
-        self.n_layers = n_layers
-        self.act_name = act_name
-        self.output_size = output_size
-        self.last_layer_linear = last_layer_linear
-        self.is_res = is_res
-        if self.last_layer_linear is False:
-            self.last_act = get_activation(self.act_name)
-
-        for i in range(1, self.n_layers + 1):
-            setattr(self, f"layer_{i}", EncoderLayerCoupling(
-                input_size=input_size,
-                z_size=z_size,
-                d_tensor=d_tensor,
-                n_heads=n_heads,
-                seq_len=seq_len,
-                n_neurons=n_neurons,
-                act_name=act_name,
-                normalization_type=normalization_type,
-                is_res=is_res,
-            ))
-        self.last_layer = nn.Linear(input_size, output_size)
-        torch.nn.init.xavier_normal_(self.last_layer.weight)
-        torch.nn.init.constant_(self.last_layer.bias, 0)
-
-    def forward(self, x, z):
-        u = x
-        for i in range(1, self.n_layers + 1):
-            u = getattr(self, f"layer_{i}")(x=u, z=z)
-        u = self.last_layer(u)
-        if self.last_layer_linear is False:
-            u = self.last_act(u)
-        return u
-
-
-class Sum(nn.Module):
-    """Module to perform summation along one dimension."""
-    def __init__(self, dim, keepshape=False):
-        super(Sum, self).__init__()
-        self.dim = dim
-        self.keepshape = keepshape
-
-    def forward(self, input):
-        if self.keepshape:
-            shape = input.shape
-            x = input.sum(dim=self.dim, keepdims=True).expand(shape)
-        else:
-            x = input.sum(dim=self.dim)
-        return x
-
-
-class Mean(nn.Module):
-    """Module to perform summation along one dimension."""
-    def __init__(self, dim, keepshape=False):
-        super(Mean, self).__init__()
-        self.dim = dim
-        self.keepshape = keepshape
-
-    def forward(self, input):
-        if self.keepshape:
-            shape = input.shape
-            x = input.mean(dim=self.dim, keepdims=True).expand(shape)
-        else:
-            x = input.mean(dim=self.dim)
-        return x
-
-
-class Exp(nn.Module):
-    def __init__(self):
-        super(Exp, self).__init__()
-
-    def forward(self, input):
-        return input.exp()
-
-
-class Flatten(nn.Module):
-    def __init__(self, keepdims, is_reshape=False):
-        super(Flatten, self).__init__()
-        if not isinstance(keepdims, tuple):
-            keepdims = (keepdims,)
-        assert keepdims == tuple(range(len(keepdims)))
-        self.keepdims = keepdims
-        self.is_reshape = is_reshape
-
-    def forward(self, input):
-        if self.is_reshape:
-            return input.reshape(*input.shape[:len(self.keepdims)], -1)
-        else:
-            return input.view(*input.shape[:len(self.keepdims)], -1)
-
-    def __repr__(self):
-        return "Flatten(keepdims={}, is_reshape={})".format(self.keepdims, self.is_reshape)
-
-
-class Permute(nn.Module):
-    def __init__(self, permute_idx):
-        super(Permute, self).__init__()
-        self.permute_idx = permute_idx
-
-    def forward(self, input):
-        return input.permute(*self.permute_idx).contiguous()
-
-    def __repr__(self):
-        return "Permute({})".format(self.permute_idx)
-
-
-class Reshape(nn.Module):
-    def __init__(self, shape):
-        super(Reshape, self).__init__()
-        self.shape = shape
-
-    def forward(self, input):
-        return input.reshape(self.shape)
-
-    def __repr__(self):
-        return "Reshape({})".format(self.shape)
-
-
 class Channel_Gen(object):
     """Generator to generate number of channels depending on the block id (n)."""
     def __init__(self, channel_mode):
@@ -2603,49 +2201,6 @@ def interpolate_2d(node_feature_2, length=4):
     interpolation = griddata(points, values, xi, method='cubic').reshape(-1, 2)
     node_feature_2 = torch.cat([torch.FloatTensor(interpolation[...,1:]), node_feature_2, torch.FloatTensor(interpolation[:,:1])], 1)
     return node_feature_2
-
-
-def fix_VL_small3_data(data, n_periods=5, offset=4, isplot=False):
-    node_feature_2 = data.node_feature["2"][..., -1:].reshape(*dict(data.original_shape)["2"])
-    node_label_2 = data.node_label["2"][..., -1:].reshape(*dict(data.original_shape)["2"])
-    v_grid = data.node_feature["2"][..., -2:-1].reshape(*dict(data.original_shape)["2"])
-    node_feature_2 = interpolate_2d(node_feature_2, length=4)
-    node_label_2 = interpolate_2d(node_label_2, length=4)
-    x_size = node_feature_2.shape[1]
-
-    node_feature_2 = torch.cat([node_feature_2] * (2 * n_periods + 1), 1)
-    node_label_2_new = torch.cat([node_label_2] * (2 * n_periods + 1), 1).reshape(-1, 1, 1)
-    v_grid = torch.cat([v_grid] * (2 * n_periods + 1), 1)
-    original_shape_2 = tuple(node_feature_2)
-    node_feature_2_new = torch.stack([v_grid, node_feature_2], -1).reshape(-1, 1, 2)
-    node_feature_0_new = torch.cat([data.node_feature["0"]] * (2 * n_periods + 1))
-    node_label_0_new = torch.cat([data.node_label["0"]] * (2 * n_periods + 1))
-
-    x_size_new = x_size * (2 * n_periods + 1)
-    data.node_feature = {"0": node_feature_0_new, "2": node_feature_2_new}
-    data.node_label = {"0": node_label_0_new, "2": node_label_2_new}
-    mask_0 = torch.zeros(x_size_new).bool()
-    mask_2 = torch.zeros(256, x_size_new).bool()
-    mask_0[x_size*n_periods+offset: x_size*(n_periods+1)-offset] = True
-    mask_2[:, x_size*n_periods+offset: x_size*(n_periods+1)-offset] = True
-    data.mask = {"0": mask_0, "2": mask_2.view(-1)}
-    data.mask_non_badpoints = {"0": torch.ones(x_size_new).bool(), "2": torch.ones(256, x_size_new).bool().view(-1)}
-    data.original_shape = (('0', (x_size_new,)), ('2', (256, x_size_new)))
-
-    if isplot:
-        plt.figure(figsize=(18,6))
-        plt.imshow(node_feature_2[:,:1000], vmin=0, vmax=7, aspect="auto", cmap="gist_heat_r", origin='lower',)
-        plt.show()
-    return data
-
-
-def fix_VL_small3_dataset(dataset, n_periods=5, offset=4):
-    x_size = dict(dataset[0].original_shape)["0"][0]
-    for data in dataset:
-        fix_VL_small3_data(data, n_periods=n_periods, offset=offset)
-    dataset.mask_outer = torch.zeros(x_size).bool()
-    dataset.mask_outer[offset: -offset] = True
-    return dataset
 
 
 def get_keys_values(Dict, exclude=None):
@@ -2813,6 +2368,7 @@ def deepsnap_to_pyg(data, is_flatten=False, use_pos=False, args_dataset=None):
             data_pyg.y = data_pyg.y.flatten(start_dim=1)
     return data_pyg
 
+
 def attrdict_to_pygdict(attrdict, is_flatten=False, use_pos=False):    
     pygdict = {
         "x": attrdict["node_feature"]["n0"],
@@ -2861,6 +2417,7 @@ def attrdict_to_pygdict(attrdict, is_flatten=False, use_pos=False):
         else:
             pygdict["x"] = torch.cat([pygdict["x"].flatten(start_dim=1), pygdict["x_bdd"]], -1)
     return Attr_Dict(pygdict)
+
 
 def sample_reward_beta(reward_beta_str,batch_size=1):
     """

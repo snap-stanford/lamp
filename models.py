@@ -40,9 +40,9 @@ from lamp.datasets.mppde1d_dataset import get_data_pred, update_edge_attr_1d
 from lamp.utils_model import get_conv_func, get_conv_trans_func, get_Hessian_penalty
 from lamp.pytorch_net.util import get_repeat_interleave, Printer, forward_Runge_Kutta, tuple_add, tuple_mul, clip_grad, Batch, make_dir, to_np_array, record_data, make_dir, ddeepcopy as deepcopy, filter_filename, Early_Stopping, str2bool, get_filename_short, print_banner, plot_matrices, to_string, init_args, get_poly_basis_tensor, get_num_params, get_pdict
 from lamp.utils import PDE_PATH, EXP_PATH
-from lamp.utils import sample_reward_beta, copy_data, fourier_encode_dist, requires_grad, endow_grads, process_data_for_CNN, get_regularization, get_batch_size
-from lamp.utils import detach_data, get_model_dict, loss_op_core, MLP, MLP_Coupling, MLP_Attn, get_keys_values, flatten, get_elements, get_activation, to_cpu, to_tuple_shape, parse_multi_step, parse_act_name, parse_reg_type, loss_op, get_cholesky_inverse, get_normalization, get_edge_index_kernel, loss_hybrid, stack_tuple_elements, add_noise, get_neg_loss, get_pos_dims_dict
-from lamp.utils import p, seed_everything, is_diagnose, get_precision_floor, parse_string_idx_to_list, parse_loss_type, get_loss_ar, get_max_pool, get_data_next_step, get_LCM_input_shape, expand_same_shape, Sum, Mean, Channel_Gen, Flatten, Permute, Reshape, add_data_noise
+from lamp.utils import sample_reward_beta, copy_data, requires_grad, endow_grads, process_data_for_CNN, get_regularization, get_batch_size
+from lamp.utils import detach_data, get_model_dict, loss_op_core, MLP, MLP_Coupling, get_keys_values, flatten, get_activation, to_cpu, to_tuple_shape, parse_multi_step, parse_act_name, parse_reg_type, loss_op, get_normalization, add_noise, get_neg_loss, get_pos_dims_dict
+from lamp.utils import p, seed_everything, is_diagnose, get_precision_floor, parse_string_idx_to_list, parse_loss_type, get_loss_ar, get_max_pool, get_data_next_step, expand_same_shape, add_data_noise
 from lamp.pytorch_net.util import Attr_Dict, set_seed, pdump, pload, get_time, check_same_model_dict, Zip, Interp1d_torch
 from deepsnap.hetero_graph import HeteroGraph
 from deepsnap.hetero_gnn import forward_op

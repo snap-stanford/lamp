@@ -21,7 +21,7 @@ sys.path.append(os.path.join(os.path.dirname("__file__"), '..', '..', '..'))
 from lamp.datasets.mppde1d_dataset import MPPDE1D
 from lamp.datasets.arcsimmesh_dataset import ArcsimMesh
 from lamp.pytorch_net.util import ddeepcopy as deepcopy, Batch, make_dir
-from lamp.utils import p, PDE_PATH, get_elements, is_diagnose, get_keys_values, loss_op, to_tuple_shape, parse_string_idx_to_list, parse_multi_step, get_device, Channel_Gen, process_data_for_CNN, get_activation, get_normalization, Mean, Flatten, Permute, Reshape, to_cpu, add_data_noise
+from lamp.utils import p, PDE_PATH, get_elements, is_diagnose, get_keys_values, loss_op, to_tuple_shape, parse_string_idx_to_list, parse_multi_step, get_device, get_activation, get_normalization, to_cpu, add_data_noise
 
 
 def load_data(args, **kwargs):

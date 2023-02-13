@@ -97,10 +97,10 @@ If you find our work and/or our code useful, please cite us via:
 
 ```bibtex
 @inproceedings{wu2023learning,
-title={Learning Controllable Adaptive Simulation for Multi-resolution Physics},
-author={Tailin Wu and Takashi Maruyama and Qingqing Zhao and Gordon Wetzstein and Jure Leskovec},
-booktitle={The Eleventh International Conference on Learning Representations},
-year={2023},
-url={https://openreview.net/forum?id=PbfgkZ2HdbE}
+  title={Learning Controllable Adaptive Simulation for Multi-resolution Physics},
+  author={Tailin Wu and Takashi Maruyama and Qingqing Zhao and Gordon Wetzstein and Jure Leskovec},
+  booktitle={The Eleventh International Conference on Learning Representations},
+  year={2023},
+  url={https://openreview.net/forum?id=PbfgkZ2HdbE}
 }
 ```

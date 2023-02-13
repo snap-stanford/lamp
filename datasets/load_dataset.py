@@ -13,7 +13,6 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 import time
 
-
 import sys, os
 sys.path.append(os.path.join(os.path.dirname("__file__"), '..'))
 sys.path.append(os.path.join(os.path.dirname("__file__"), '..', '..'))
@@ -174,83 +173,7 @@ def load_data(args, **kwargs):
         p.print("{} does not exist. Generating...".format(filename_test))
         is_save = True  # If True, will save generated deepsnap dataset.
 
-        if "fno" in args.dataset:
-            if not args.is_test_only:
-                pyg_dataset_train_val = FNOData(
-                    dataset=args.dataset,
-                    input_steps=args.input_steps * args.temporal_bundle_steps,
-                    output_steps=max_pred_steps,
-                    time_interval=args.time_interval,
-                    is_y_diff=args.is_y_diff,
-                    is_train=True,
-                    is_y_variable_length=args.is_y_variable_length,
-                )
-            pyg_dataset_test = FNOData(
-                dataset=args.dataset,
-                input_steps=args.input_steps * args.temporal_bundle_steps,
-                output_steps=max_pred_steps,
-                time_interval=args.time_interval,
-                is_y_diff=args.is_y_diff,
-                is_train=False,
-                is_y_variable_length=args.is_y_variable_length,
-            )
-        elif args.dataset.startswith("movinggas"):
-            if not args.is_test_only:
-                pyg_dataset_train_val = MovingGas(
-                    dataset=args.dataset,
-                    input_steps=args.input_steps * args.temporal_bundle_steps,
-                    output_steps=max_pred_steps,
-                    time_interval=args.time_interval,
-                    is_y_diff=args.is_y_diff,
-                    is_train=True,
-                )
-            pyg_dataset_test = MovingGas(
-                dataset=args.dataset,
-                input_steps=args.input_steps * args.temporal_bundle_steps,
-                output_steps=max_pred_steps,
-                time_interval=args.time_interval,
-                is_y_diff=args.is_y_diff,
-                is_train=False,
-            )
-        elif args.dataset in ["karman3d", "karman3d-small"]:
-            if not args.is_test_only:
-                pyg_dataset_train_val = Karman3D(
-                    dataset=args.dataset,
-                    input_steps=args.input_steps,
-                    output_steps=max_pred_steps,
-                    time_interval=args.time_interval,
-                    is_y_diff=args.is_y_diff,
-                    is_train=True,
-                )
-            pyg_dataset_test = Karman3D(
-                dataset=args.dataset,
-                input_steps=args.input_steps,
-                output_steps=max_pred_steps,
-                time_interval=args.time_interval,
-                is_y_diff=args.is_y_diff,
-                is_train=False,
-            )
-        elif args.dataset in ["karman3d-large", "karman3d-large-s", "karman3d-large-d", "karman3d-large-s-d"]:
-            pyg_dataset_train_val = Karman3D(
-                    dataset=args.dataset,
-                    input_steps=args.input_steps,
-                    output_steps=max_pred_steps,
-                    time_interval=args.time_interval,
-                    is_y_diff=args.is_y_diff,
-                    is_train=True,
-                    data_format="deepsnap",
-                )
-            pyg_dataset_test = Karman3D(
-                dataset=args.dataset,
-                input_steps=args.input_steps,
-                output_steps=max_pred_steps,
-                time_interval=args.time_interval,
-                is_y_diff=args.is_y_diff,
-                is_train=False,
-                data_format="deepsnap",
-            )
-            is_to_deepsnap = False
-        elif args.dataset.startswith("mppde1d"):
+        if args.dataset.startswith("mppde1d"):
             if not args.is_test_only:
                 pyg_dataset_train = MPPDE1D(
                     dataset=args.dataset,

@@ -69,10 +69,23 @@ python train.py --load_dirname=evo-1d_2023-01-01 --load_filename=qvQry9QJ --exp_
 
 First, pre-train the evolution model for 2D:
 
+```code
+
+```
 
 Then, jointly training the remeshing model via RL and the evolution model:
 
-# Inference
+```code
+
+```
+
+# Analysis
+
+* For 1D experiments, to analyze the pretrained evolution model for LAMP and the baselines, use [analysis_1D_evo.ipynb](https://github.com/snap-stanford/lamp/blob/master/analysis_1D_evo.ipynb).
+
+* For 1D experiments, to analyze the full model for LAMP and the baselines, use [analysis_1D_full.ipynb](https://github.com/snap-stanford/lamp/blob/master/analysis_1D_full.ipynb).
+
+* For 2D experiments, to analyze the full model for LAMP and the baselines, use [analysis_2D_full.ipynb](https://github.com/snap-stanford/lamp/blob/master/analysis_2D_full.ipynb).
 
 
 # Related Projects:

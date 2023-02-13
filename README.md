@@ -12,7 +12,7 @@ We demonstrate that LAMP is able to adaptively trade-off computation to improve 
 
 <a href="url"><img src="https://github.com/snap-stanford/lamp/blob/master/assets/lamp_architecture.png" align="center" width="700" ></a>
 
-# Installation
+## Installation
 
 1. First clone the directory. Then run the following command to initialize the submodules:
 
@@ -44,18 +44,18 @@ pip install -r requirements.txt
 
 Then set up wandb, following [this link](https://docs.wandb.ai/quickstart).
 
-# Dataset
+## Dataset
 
 The dataset files can be downloaded via [this link](https://drive.google.com/drive/folders/1ld5I86mPC7wWTxPhbCtG2AcH0vLW3o25?usp=share_link). 
 * To run 1D experiment, download the files under "mppde1d_data/" in the link into the "data/mppde1d_data/" folder in the local repo. 
 * To run 2D mesh-based experiment, download the files under "arcsimmesh_data/" in the link into the "data/arcsimmesh_data/" folder in the local repo.
 
 
-# Training
+## Training
 
 Below we provide example commands for training LAMP. For all the commands that reproduce the experiments in the paper, see the [results/README.md](https://github.com/snap-stanford/lamp/tree/master/results).
 
-## 1D nonlinear PDE:
+### 1D nonlinear PDE:
 
 First, pre-train the evolution model for 1D:
 
@@ -85,7 +85,7 @@ Then, jointly training the remeshing model via RL and the evolution model:
 
 ```
 
-# Analysis
+## Analysis
 
 * For 1D experiments, to analyze the pretrained evolution model for LAMP and the baselines, use [analysis_1D_evo.ipynb](https://github.com/snap-stanford/lamp/blob/master/analysis_1d_evo.ipynb).
 
@@ -94,11 +94,11 @@ Then, jointly training the remeshing model via RL and the evolution model:
 * For 2D experiments, to analyze the full model for LAMP and the baselines, use [analysis_2D_full.ipynb](https://github.com/snap-stanford/lamp/blob/master/analysis_2d_full.ipynb).
 
 
-# Related Projects:
+## Related Projects:
 
 * [LE-PDE](https://github.com/snap-stanford/le_pde) (NeurIPS 2022): Accelerate the simulation and inverse optimization of PDEs. Compared to state-of-the-art deep learning-based surrogate models (e.g., FNO, MP-PDE), it is up to 15x improvement in speed, while achieving competitive accuracy.
 
-# Citation
+## Citation
 If you find our work and/or our code useful, please cite us via:
 
 ```bibtex

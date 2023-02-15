@@ -1,7 +1,9 @@
 wandb
 deepsnap==0.2.1
-matplotlib
+matplotlib==3.4.3
 tqdm
 scipy
 h5py
 pandas
+yaml
+numba

@@ -1561,7 +1561,7 @@ class GNNRemesherPolicy(GNNRemesher):
                 **kwargs
             )
             # Correct acceleration, that is pred_k
-            pdb.set_trace()
+            # pdb.set_trace()
             if not self.correction_rate==0.:
                 data.x[:,:self.output_size] = data.x[:,:self.output_size] + self.correction_rate * noise
             # check if change in data.x makes change in pred_k["n0"] 

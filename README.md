@@ -75,10 +75,16 @@ python train.py --load_dirname=evo-1d_2023-01-01 --load_filename=mhkVkAaz --exp_
 
 ### 2D mesh-based simulation:
 
-First, pre-train the evolution model for 2D:
+In order to run 2d mesh-based simulation, FEniCS needs to be installed:
 
 ```code
+conda install -c conda-forge fenics
+```
 
+After FEniCS is installed, pre-train the evolution model for 2D:
+
+```code
+export OMP_NUM_THREADS=6; python3 train.py --exp_id=evo-2d  --date_time=2023-02-18 --dataset=arcsimmesh_square_annotated --time_interval=2 --data_dropout=None --n_train=-1 --save_interval=5 --algo=gnnremesher-evolution --rl_coefs=None --input_steps=2 --act_name=silu --multi_step=1 --temporal_bundle_steps=1 --edge_attr=True --use_grads=False --is_y_diff=False --loss_type=l2 --batch_size=10 --val_batch_size=10 --latent_size=56 --n_layers=8 --noise_amp=1e-2 --correction_rate=0.9 --epochs=100 --opt=adam --weight_decay=0  --is_mesh=True --seed=0 --id=0 --verbose=2 --test_interval=2 --n_workers=20 --gpuid=3
 ```
 
 Then, jointly training the remeshing model via RL and the evolution model:

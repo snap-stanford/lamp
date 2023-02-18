@@ -19,7 +19,7 @@ sys.path.append(os.path.join(os.path.dirname("__file__"), '..', '..'))
 sys.path.append(os.path.join(os.path.dirname("__file__"), '..', '..', '..'))
 from lamp.datasets.mppde1d_dataset import MPPDE1D
 from lamp.datasets.arcsimmesh_dataset import ArcsimMesh
-from lamp.pytorch_net.util import ddeepcopy as deepcopy, Batch, make_dir
+from lamp.pytorch_net.util import ddeepcopy as deepcopy, Batch, make_dir, Attr_Dict, My_Tuple
 from lamp.utils import p, PDE_PATH, get_elements, is_diagnose, get_keys_values, loss_op, to_tuple_shape, parse_string_idx_to_list, parse_multi_step, get_device, get_activation, get_normalization, to_cpu, add_data_noise
 
 
@@ -312,3 +312,369 @@ def load_data(args, **kwargs):
     test_loader = DataLoader(dataset_test, num_workers=args.n_workers, collate_fn=collate_fn,
                              batch_size=args.val_batch_size if not args.algo.startswith("supn") else 1, shuffle=False, drop_last=False)
     return (dataset_train_val, dataset_test), (train_loader, val_loader, test_loader)
+
+class MeshBatch(object):
+    def __init__(self, is_absorb_batch=False, is_collate_tuple=False):
+        """
+
+        Args:
+            is_collate_tuple: if True, will collate inside the tuple.
+        """
+        self.is_absorb_batch = is_absorb_batch
+        self.is_collate_tuple = is_collate_tuple
+
+    def collate(self):
+        import re
+        if torch.__version__.startswith("1.9") or torch.__version__.startswith("1.10") or torch.__version__.startswith("1.11"):
+            from torch._six import string_classes
+            from collections import abc as container_abcs
+        else:
+            from torch._six import container_abcs, string_classes, int_classes
+        from pstar import pdict, plist
+        default_collate_err_msg_format = (
+            "collate_fn: batch must contain tensors, numpy arrays, numbers, "
+            "dicts or lists; found {}")
+        np_str_obj_array_pattern = re.compile(r'[SaUO]')
+        def default_convert(data):
+            r"""Converts each NumPy array data field into a tensor"""
+            elem_type = type(data)
+            if isinstance(data, torch.Tensor):
+                return data
+            elif elem_type.__module__ == 'numpy' and elem_type.__name__ != 'str_' \
+                    and elem_type.__name__ != 'string_':
+                # array of string classes and object
+                if elem_type.__name__ == 'ndarray' \
+                        and np_str_obj_array_pattern.search(data.dtype.str) is not None:
+                    return data
+                return torch.as_tensor(data)
+            elif isinstance(data, container_abcs.Mapping):
+                return {key: default_convert(data[key]) for key in data}
+            elif isinstance(data, tuple) and hasattr(data, '_fields'):  # namedtuple
+                return elem_type(*(default_convert(d) for d in data))
+            elif isinstance(data, container_abcs.Sequence) and not isinstance(data, string_classes):
+                return [default_convert(d) for d in data]
+            else:
+                return data
+
+        def collate_fn(batch):
+            r"""Puts each data field into a tensor with outer dimension batch size, adapted from PyTorch's default_collate."""
+            # pdb.set_trace()
+            elem = batch[0]
+            elem_type = type(elem)
+            if isinstance(elem, torch.Tensor):
+                out = None
+                if torch.utils.data.get_worker_info() is not None:
+                    # If we're in a background process, concatenate directly into a
+                    # shared memory tensor to avoid an extra copy
+                    numel = sum([x.numel() for x in batch])
+                    storage = elem.storage()._new_shared(numel)
+                    out = elem.new(storage)
+                tensor = torch.cat(batch, 0, out=out)
+                if self.is_absorb_batch:
+                    # pdb.set_trace()
+                    if tensor.shape[1] == 0:
+                        tensor = tensor.view(tensor.shape[0], 0)
+                    else:
+                        tensor = tensor.view(-1, *tensor.shape[2:])
+                return tensor
+            elif elem is None:
+                return None
+            elif elem_type.__module__ == 'numpy' and elem_type.__name__ != 'str_' \
+                and elem_type.__name__ != 'string_':
+                if elem_type.__name__ == 'ndarray' or elem_type.__name__ == 'memmap':
+                    # array of string classes and object
+                    if np_str_obj_array_pattern.search(elem.dtype.str) is not None:
+                        raise TypeError(default_collate_err_msg_format.format(elem.dtype))
+                    return collate_fn([torch.as_tensor(b) for b in batch])
+                elif elem.shape == ():  # scalars
+                    return torch.as_tensor(batch)
+            elif isinstance(elem, float):
+                return torch.tensor(batch, dtype=torch.float64)
+            elif isinstance(elem, int):
+                return torch.tensor(batch)
+            elif isinstance(elem, string_classes):
+                return batch
+            elif isinstance(elem, container_abcs.Mapping):
+                Dict = {}
+                for key in elem:
+                    if key == "node_feature":
+                        Dict["vers"] = collate_trans_fn([d[key] for d in batch])
+                        Dict[key] = collate_fn([d[key] for d in batch])
+                        Dict["batch"] = {"n0": []}
+                        batch_nodes = [d[key]["n0"] for d in batch]
+                        for i in range(len(batch_nodes)):
+                            item = torch.full((batch_nodes[i].shape[0],), i, dtype=torch.long)
+                            Dict["batch"]["n0"].append(item)
+                        Dict["batch"]["n0"] = torch.cat(Dict["batch"]["n0"])
+                    elif key in ["y_tar", "reind_yfeatures"]:
+                        # pdb.set_trace()
+                        Dict[key] = collate_ytar_trans_fn([d[key] for d in batch])
+                    elif key in ["history"]:
+                        Dict[key] = collate_fn([d[key] for d in batch])
+                        Dict["batch_history"] = {"n0": []}
+                        batch_nodes = [d[key]["n0"] for d in batch]
+                        for i in range(len(batch_nodes)):
+                            item = torch.full((batch_nodes[i][0].shape[0],), i, dtype=torch.long)
+                            Dict["batch_history"]["n0"].append(item)
+                        Dict["batch_history"]["n0"] = torch.cat(Dict["batch_history"]["n0"])
+                    elif key == "edge_index":
+                        Dict[key] = collate_edgeidshift_fn([d[key] for d in batch])
+                    elif key == "yedge_index":
+                        # pdb.set_trace()
+                        Dict[key] = collate_y_edgeidshift_fn([d[key] for d in batch])
+                    elif key == "xfaces":
+                        Dict[key] = collate_xfaceshift_fn([d[key] for d in batch])
+                    elif key in ["bary_indices", "hist_indices"]:
+                        #pdb.set_trace()
+                        Dict[key] = collate_bary_indices_fn([d[key] for d in batch])
+                    elif key in ["yface_list", "xface_list"]:
+                         Dict[key] = collate_fn([d[key] for d in batch])
+                    else:
+                        Dict[key] = collate_fn([d[key] for d in batch])
+                if isinstance(elem, pdict) or isinstance(elem, Attr_Dict):
+                    Dict = elem.__class__(**Dict)
+                return Dict
+            elif isinstance(elem, tuple) and hasattr(elem, '_fields'):  # namedtuple:
+                return elem_type(*(collate_fn(samples) for samples in zip(*batch)))
+            elif isinstance(elem, My_Tuple):
+                it = iter(batch)
+                elem_size = len(next(it))
+                if not all(len(elem) == elem_size for elem in it):
+                    raise RuntimeError('each element in list of batch should be of equal size')
+                transposed = zip(*batch)
+                return elem.__class__([collate_fn(samples) for samples in transposed])
+            elif isinstance(elem, tuple):
+                # pdb.set_trace()
+                if self.is_collate_tuple:
+                    #pdb.set_trace()
+                    if len(elem) == 0:
+                        return batch[0]
+                    elif isinstance(elem[0], torch.Tensor):
+                        newbatch = ()
+                        for i in range(len(elem)):
+                            newbatch = newbatch + tuple([torch.cat([tup[i] for tup in batch], dim=0)])
+                        return newbatch
+                    elif type(elem[0]) == list:
+                        newbatch = ()
+                        for i in range(len(elem)):
+                            cumsum = 0
+                            templist = []
+                            for k in range(len(batch)):
+                                shiftbatch = np.array(batch[k][i]) + cumsum
+                                cumsum = shiftbatch.max() + 1
+                                templist.extend(shiftbatch.tolist())
+                            newbatch = newbatch + (templist,)
+                    elif type(elem[0]).__module__ == np.__name__:
+                        newbatch = ()
+                        for i in range(len(elem)):
+                            cumsum = 0
+                            templist = []
+                            for k in range(len(batch)):
+                                shiftbatch = batch[k][i] + cumsum
+                                cumsum = shiftbatch.max() + 1
+                                templist.extend(shiftbatch.tolist())
+                            newbatch = newbatch + (templist,)
+                    else:
+                        newbatch = batch[0]
+                    return newbatch
+                else:
+                    return batch
+            elif isinstance(elem, container_abcs.Sequence):
+                # check to make sure that the elements in batch have consistent size
+                it = iter(batch)
+                elem_size = len(next(it))
+                if not all(len(elem) == elem_size for elem in it):
+                    raise RuntimeError('each element in list of batch should be of equal size')
+                transposed = zip(*batch)
+                return  [collate_fn(samples) for samples in transposed]
+            elif elem.__class__.__name__ == 'Dictionary':
+                return batch
+            elif elem.__class__.__name__ == 'DGLHeteroGraph':
+                import dgl
+                return dgl.batch(batch)
+            raise TypeError(default_collate_err_msg_format.format(elem_type))
+
+        def collate_bary_indices_fn(batch):
+            r"""Puts each data field into a tensor with outer dimension batch size, adapted from PyTorch's default_collate."""
+            # pdb.set_trace()
+            elem = batch[0]
+            elem_type = type(elem)
+            if isinstance(elem, container_abcs.Mapping):
+                Dict = {key: collate_bary_indices_fn([d[key] for d in batch]) for key in elem}
+                if isinstance(elem, pdict) or isinstance(elem, Attr_Dict):
+                    Dict = elem.__class__(**Dict)
+                return Dict
+            elif isinstance(elem, tuple):
+                # pdb.set_trace()
+                if self.is_collate_tuple:
+                    #pdb.set_trace()
+                    if type(elem[0]).__module__ == np.__name__:
+                        newbatch = ()
+                        for i in range(len(elem)):
+                            cumsum = 0
+                            templist = []
+                            for k in range(len(batch)):
+                                shiftbatch = batch[k][i] + cumsum
+                                cumsum = shiftbatch.max() + 1
+                                templist.extend(shiftbatch)
+                            newbatch = newbatch + (templist,)
+                        return newbatch
+                else:
+                    return batch
+            raise TypeError(default_collate_err_msg_format.format(elem_type))
+
+        def collate_y_edgeidshift_fn(batch):
+            r"""Puts each data field into a tensor with outer dimension batch size, adapted from PyTorch's default_collate."""
+            # pdb.set_trace()
+            elem = batch[0]
+            elem_type = type(elem)
+            if isinstance(elem, torch.Tensor):
+                out = None
+                if torch.utils.data.get_worker_info() is not None:
+                    # If we're in a background process, concatenate directly into a
+                    # shared memory tensor to avoid an extra copy
+                    numel = sum([x.numel() for x in batch])
+                    storage = elem.storage()._new_shared(numel)
+                    out = elem.new(storage)
+                cumsum = 0
+                newbatch = []
+                for i in range(len(batch)):
+                    shiftbatch = batch[i] + cumsum
+                    newbatch.append(shiftbatch)
+                    cumsum = shiftbatch.max().item() + 1
+                tensor = torch.cat(newbatch, dim=1)
+                return tensor
+            elif isinstance(elem, container_abcs.Mapping):
+                Dict = {key: collate_y_edgeidshift_fn([d[key] for d in batch]) for key in elem}
+                if isinstance(elem, pdict) or isinstance(elem, Attr_Dict):
+                    Dict = elem.__class__(**Dict)
+                return Dict
+            elif isinstance(elem, tuple):
+                if self.is_collate_tuple:
+                    if isinstance(elem[0], torch.Tensor):
+                        newbatch = ()
+                        for i in range(len(elem)):
+                            cumsum = 0
+                            tempbatch = []
+                            for tup in batch:
+                                shiftbatch = tup[i] + cumsum
+                                tempbatch.append(shiftbatch)
+                                cumsum = shiftbatch.max().item() + 1
+                            newbatch = newbatch + tuple([torch.cat(tempbatch, dim=-1)])
+                        return newbatch
+                else:
+                    return batch
+            raise TypeError(default_collate_err_msg_format.format(elem_type))
+
+        def collate_edgeidshift_fn(batch):
+            r"""Puts each data field into a tensor with outer dimension batch size, adapted from PyTorch's default_collate."""
+            # pdb.set_trace()
+            elem = batch[0]
+            elem_type = type(elem)
+            if isinstance(elem, torch.Tensor):
+                out = None
+                if torch.utils.data.get_worker_info() is not None:
+                    # If we're in a background process, concatenate directly into a
+                    # shared memory tensor to avoid an extra copy
+                    numel = sum([x.numel() for x in batch])
+                    storage = elem.storage()._new_shared(numel)
+                    out = elem.new(storage)
+                cumsum = 0
+                newbatch = []
+                for i in range(len(batch)):
+                    shiftbatch = batch[i] + cumsum
+                    newbatch.append(shiftbatch)
+                    cumsum = shiftbatch.max().item() + 1
+                tensor = torch.cat(newbatch, dim=1)
+                return tensor
+            elif isinstance(elem, container_abcs.Mapping):
+                Dict = {key: collate_edgeidshift_fn([d[key] for d in batch]) for key in elem}
+                if isinstance(elem, pdict) or isinstance(elem, Attr_Dict):
+                    Dict = elem.__class__(**Dict)
+                return Dict
+            raise TypeError(default_collate_err_msg_format.format(elem_type))
+
+        def collate_xfaceshift_fn(batch):
+            r"""Puts each data field into a tensor with outer dimension batch size, adapted from PyTorch's default_collate."""
+            # pdb.set_trace()
+            elem = batch[0]
+            elem_type = type(elem)
+            if isinstance(elem, torch.Tensor):
+                out = None
+                if torch.utils.data.get_worker_info() is not None:
+                    # If we're in a background process, concatenate directly into a
+                    # shared memory tensor to avoid an extra copy
+                    numel = sum([x.numel() for x in batch])
+                    storage = elem.storage()._new_shared(numel)
+                    out = elem.new(storage)
+                cumsum = 0
+                newbatch = []
+                for i in range(len(batch)):
+                    shiftbatch = batch[i] + cumsum
+                    newbatch.append(shiftbatch)
+                    cumsum = shiftbatch.max().item() + 1
+                tensor = torch.cat(newbatch, dim=-1)
+                return tensor
+            elif isinstance(elem, container_abcs.Mapping):
+                Dict = {key: collate_xfaceshift_fn([d[key] for d in batch]) for key in elem}
+                if isinstance(elem, pdict) or isinstance(elem, Attr_Dict):
+                    Dict = elem.__class__(**Dict)
+                return Dict
+            raise TypeError(default_collate_err_msg_format.format(elem_type))
+
+        def collate_trans_fn(batch):
+            r"""Puts each data field into a tensor with outer dimension batch size, adapted from PyTorch's default_collate."""
+            # pdb.set_trace()
+            elem = batch[0]
+            elem_type = type(elem)
+            if isinstance(elem, torch.Tensor):
+                out = None
+                if torch.utils.data.get_worker_info() is not None:
+                    # If we're in a background process, concatenate directly into a
+                    # shared memory tensor to avoid an extra copy
+                    numel = sum([x.numel() for x in batch])
+                    storage = elem.storage()._new_shared(numel)
+                    out = elem.new(storage)
+                batch = [batch[i] + 2*i for i in range(len(batch))]
+                try:
+                    tensor = torch.cat(batch, 0, out=out)
+                except:
+                    pdb.set_trace()
+                if self.is_absorb_batch:
+                    # pdb.set_trace()
+                    # if tensor.shape[1] == 0:
+                    #     tensor = tensor.view(tensor.shape[0]*tensor.shape[1], 0)
+                    # else:
+                    tensor = tensor.view(-1, *tensor.shape[2:])
+                return tensor
+            elif isinstance(elem, container_abcs.Mapping):
+                Dict = {key: collate_trans_fn([d[key] for d in batch]) for key in elem}
+                if isinstance(elem, pdict) or isinstance(elem, Attr_Dict):
+                    Dict = elem.__class__(**Dict)
+                return Dict
+            raise TypeError(default_collate_err_msg_format.format(elem_type))
+
+        def collate_ytar_trans_fn(batch):
+            r"""Puts each data field into a tensor with outer dimension batch size, adapted from PyTorch's default_collate."""
+            # pdb.set_trace()
+            elem = batch[0]
+            elem_type = type(elem)
+            if isinstance(elem, tuple):
+                # pdb.set_trace()
+                if self.is_collate_tuple:
+                    #pdb.set_trace()
+                    if len(elem) == 0:
+                        return batch[0]
+                    elif isinstance(elem[0], torch.Tensor):
+                        newbatch = ()
+                        for i in range(len(elem)):
+                            templist = [batch[j][i] + 2*j for j in range(len(batch))]
+                            newbatch = newbatch + (torch.cat(templist, dim=0),)
+                        return newbatch
+            elif isinstance(elem, container_abcs.Mapping):
+                Dict = {key: collate_ytar_trans_fn([d[key] for d in batch]) for key in elem}
+                if isinstance(elem, pdict) or isinstance(elem, Attr_Dict):
+                    Dict = elem.__class__(**Dict)
+                return Dict
+            raise TypeError(default_collate_err_msg_format.format(elem_type))
+        return collate_fn

@@ -21,7 +21,7 @@ import yaml
 import sys, os
 sys.path.append(os.path.join(os.path.dirname("__file__"), '..'))
 sys.path.append(os.path.join(os.path.dirname("__file__"), '..', '..'))
-from lamp.pytorch_net.util import lcm, L2Loss, Attr_Dict, Printer, zero_grad_hook_multi, get_triu_block, get_tril_block
+from lamp.pytorch_net.util import lcm, L2Loss, Attr_Dict, Printer, zero_grad_hook_multi, get_triu_block, get_tril_block, My_Tuple
 
 p = Printer(n_digits=6)
 INVALID_VALUE = -200

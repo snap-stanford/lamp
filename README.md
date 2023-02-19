@@ -100,6 +100,8 @@ Then, jointly training the remeshing model via RL and the evolution model:
 
 * For 1D experiments, to analyze the full model for LAMP and the baselines, use [analysis_1D_full.ipynb](https://github.com/snap-stanford/lamp/blob/master/analysis_1d_full.ipynb).
 
+* For 2D experiments, to analyze the pretrained evolution model for LAMP, use [analysis_2D_evo.ipynb](https://github.com/snap-stanford/lamp/blob/master/analysis_2d_evo.ipynb).
+
 * For 2D experiments, to analyze the full model for LAMP and the baselines, use [analysis_2D_full.ipynb](https://github.com/snap-stanford/lamp/blob/master/analysis_2d_full.ipynb).
 
 

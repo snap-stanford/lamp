@@ -57,7 +57,7 @@ conda install -c conda-forge fenics
 
 The dataset files can be downloaded via [this link](https://drive.google.com/drive/folders/1ld5I86mPC7wWTxPhbCtG2AcH0vLW3o25?usp=share_link). 
 * To run 1D experiment, download the files under "mppde1d_data/" in the link into the "data/mppde1d_data/" folder in the local repo. 
-* To run 2D mesh-based experiment, download the files under "arcsimmesh_data/" in the link into the "data/arcsimmesh_data/" folder in the local repo. Script for data generation is also provided ("datasets/datagen_square.ipynb".) To run the script, compile [ARCSim v0.2.1](http://graphics.berkeley.edu/resources/ARCSim/#:~:text=ArcSim%20is%20a%20simulation,detail%20of%20the%20simulated%20objects) and place the script in the parent folder.  
+* To run 2D mesh-based experiment, download the files under "arcsimmesh_data/" in the link into the "data/arcsimmesh_data/" folder in the local repo. Script for data generation is also provided ("datasets/datagen_square.ipynb".) To run the script, compile [ARCSim v0.2.1](http://graphics.berkeley.edu/resources/ARCSim/#:~:text=ArcSim%20is%20a%20simulation,detail%20of%20the%20simulated%20objects) and place the script in ARCSim folder.  
 
 
 ## Training

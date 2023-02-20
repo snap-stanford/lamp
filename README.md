@@ -20,7 +20,7 @@ We demonstrate that LAMP is able to adaptively trade-off computation to improve 
 git submodule init; git submodule update
 ```
 
-(If showing error of no permission, need to first add a new SSH key to your GitHub account.)
+(If showing error of no permission, need to first [add a new SSH key to your GitHub account](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/adding-a-new-ssh-key-to-your-github-account).)
 
 2. Install dependencies.
 

@@ -1,6 +1,7 @@
 wandb
 deepsnap==0.2.1
 matplotlib==3.4.3
+plotly
 tqdm
 scipy
 h5py

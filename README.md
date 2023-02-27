@@ -94,7 +94,7 @@ Then, jointly training the remeshing model via RL and the evolution model:
 
 ```
 
-For commands for baseline models in 1D, see the README in [./MP_Neural_PDE_Solvers/](https://github.com/snap-stanford/lamp/tree/master/MP_Neural_PDE_Solvers).
+For commands for baseline models in 1D, see the README in [./MP_Neural_PDE_Solvers/](https://github.com/tailintalent/MP_Neural_PDE_Solvers).
 
 ## Analysis
 

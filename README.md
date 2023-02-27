@@ -94,6 +94,8 @@ Then, jointly training the remeshing model via RL and the evolution model:
 
 ```
 
+For commands for baseline models in 1D, see the README in [./MP_Neural_PDE_Solvers/](https://github.com/snap-stanford/lamp/tree/master/MP_Neural_PDE_Solvers).
+
 ## Analysis
 
 * For 1D experiments, to analyze the pretrained evolution model for LAMP and the baselines, use [analysis_1D_evo.ipynb](https://github.com/snap-stanford/lamp/blob/master/analysis_1d_evo.ipynb).

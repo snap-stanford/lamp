@@ -98,9 +98,9 @@ For commands for baseline models in 1D, see the README in [./MP_Neural_PDE_Solve
 
 ## Analysis
 
-* For 1D experiments, to analyze the pretrained evolution model for LAMP and the baselines, use [analysis_1D_evo.ipynb](https://github.com/snap-stanford/lamp/blob/master/analysis_1d_evo.ipynb).
+* For 1D experiments, to analyze the pretrained evolution model for LAMP, use [analysis_1D_evo.ipynb](https://github.com/snap-stanford/lamp/blob/master/analysis_1d_evo.ipynb).
 
-* For 1D experiments, to analyze the full model for LAMP and the baselines, use [analysis_1D_full.ipynb](https://github.com/snap-stanford/lamp/blob/master/analysis_1d_full.ipynb).
+* For 1D experiments, to analyze the full model for LAMP, use [analysis_1D_full.ipynb](https://github.com/snap-stanford/lamp/blob/master/analysis_1d_full.ipynb).
 
 * For 1D experiments, to analyze the baseline models (MP-PDE, FNO, CNN), use [./MP_Neural_PDE_Solvers/analysis.ipynb](https://github.com/tailintalent/MP_Neural_PDE_Solvers/blob/master/analysis.ipynb).
 

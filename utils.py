@@ -99,6 +99,8 @@ def update_legacy_default_hyperparam(Dict):
         "processor_aggr":"max",
         "fix_alt_evolution_model":False,
         "test_reward_random_sample":False,
+        "is_1d_periodic": False,
+        "is_normalize_pos": True,
         
     }
     for key, item in default_param.items():

@@ -24,7 +24,6 @@ import torch_geometric.utils as pyg_utils
 import xarray as xr
 from tqdm import tqdm
 import matplotlib
-from numba import jit
 import math
 try:
     import dolfin

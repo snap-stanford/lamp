@@ -62,7 +62,7 @@ The dataset files can be downloaded via [this link](https://drive.google.com/dri
 
 ## Training
 
-Below we provide example commands for training LAMP. For all the commands that reproduce the experiments in the paper, see the [results/README.md](https://github.com/snap-stanford/lamp/tree/master/results).
+Below we provide example commands for training LAMP.
 
 ### 1D nonlinear PDE:
 
@@ -94,11 +94,15 @@ Then, jointly training the remeshing model via RL and the evolution model:
 export OMP_NUM_THREADS=6; python train.py --exp_id=2d_rl_reproduce --wandb_project_name=2d_rerun --wandb=True --date_time=2023-02-26 --dataset=arcsimmesh_square_annotated_coarse_minlen008_interp_500 --time_interval=2 --n_train=-1 --latent_size=64 --load_dirname=evo-2d_2023_02_18 --load_filename=9UQLIKKc_ampere1 --input_steps=2 --act_name=elu --temporal_bundle_steps=1 --use_grads=False --is_y_diff=True --loss_type=l2 --epochs=300 --opt=adam --weight_decay=0 --verbose=1 --algo=srlgnnremesher --reward_mode=lossdiff+statediff --rl_data_dropout=None --min_edge_size=0.04 --actor_lr=5e-4 --value_lr=1e-4 --value_num_pool=1 --value_pooling_type=global_mean_pool --value_latent_size=64 --value_batch_norm=False --actor_batch_norm=True --rescale=10 --edge_attr=True --rl_gamma=0.9 --value_loss_coef=0.5 --max_grad_norm=20 --is_single_action=False --value_target_mode=vanilla --wandb_step_plot=50 --wandb_step=2 --id=0 --save_iteration=500 --save_interval=1 --test_interval=1 --is_mesh=True --is_unittest=False --rl_horizon=6 --multi_step=6 --rl_eta=2e-2 --reward_beta=0 --reward_condition=True --max_action=20 --rl_is_finetune_evolution=True --lr=1e-4 --actor_critic_step=200 --evolution_steps=100 --rl_finetune_evalution_mode=policy:fine --wandb=True --batch_size=64 --val_batch_size=64 --n_workers=6 --reward_loss_coef=1000 --evl_stop_gradient=True --noise_amp=0.01 --gpuid=5 --is_eval_sample=True --seed=256 --n_train=:-1 --soft_update=False --fine_tune_gt_input=True --policy_input_feature=coords --skip_coarse=False  --skip_flip=True  --processor_aggr=mean  --fix_alt_evolution_model=True
 ```
 
+For commands for baseline models in 1D, see the README in [./MP_Neural_PDE_Solvers/](https://github.com/tailintalent/MP_Neural_PDE_Solvers).
+
 ## Analysis
 
 * For 1D experiments, to analyze the pretrained evolution model for LAMP and the baselines, use [analysis_1D_evo.ipynb](https://github.com/snap-stanford/lamp/blob/master/analysis_1d_evo.ipynb).
 
 * For 1D experiments, to analyze the full model for LAMP and the baselines, use [analysis_1D_full.ipynb](https://github.com/snap-stanford/lamp/blob/master/analysis_1d_full.ipynb).
+
+* For 1D experiments, to analyze the baseline models (MP-PDE, FNO, CNN), use [./MP_Neural_PDE_Solvers/analysis.ipynb](https://github.com/tailintalent/MP_Neural_PDE_Solvers/blob/master/analysis.ipynb).
 
 * For 2D experiments, to analyze the pretrained evolution model for LAMP, use [analysis_2D_evo.ipynb](https://github.com/snap-stanford/lamp/blob/master/analysis_2d_evo.ipynb).
 

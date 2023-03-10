@@ -4,7 +4,7 @@
 
 Official repo for the paper [Learning Controllable Adaptive Simulation for Multi-resolution Physics](https://openreview.net/forum?id=PbfgkZ2HdbE)<br />
 [Tailin Wu*](https://tailin.org/), [Takashi Maruyama*](https://sites.google.com/view/tmaruyama/home), [Qingqing Zhao*](https://cyanzhao42.github.io/), [Gordon Wetzstein](https://stanford.edu/~gordonwz/), [Jure Leskovec](https://cs.stanford.edu/people/jure/)<br />
-ICLR 2023 **spotlight**. 
+ICLR 2023 **Notable-Top-25%**. 
 
 It is the first fully DL-based surrogate model that jointly learns the evolution model, and optimizes spatial resolutions to reduce computational cost, learned via reinforcement learning. 
 

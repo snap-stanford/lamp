@@ -100,13 +100,13 @@ For commands for baseline models in 1D, see the README in [./MP_Neural_PDE_Solve
 
 * For 1D experiments, to analyze the pretrained evolution model for LAMP and the baselines, use [analysis_1D_evo.ipynb](https://github.com/snap-stanford/lamp/blob/master/analysis_1d_evo.ipynb).
 
-* For 1D experiments, to analyze the full model for LAMP and the baselines, use [analysis_1D_full.ipynb](https://github.com/snap-stanford/lamp/blob/master/analysis_1d_full.ipynb).
+* For 1D experiments, to analyze the full model for LAMP and the baselines, use [analysis_1D_full.py](https://github.com/snap-stanford/lamp/blob/master/analysis_1d_full.py).
 
 * For 1D experiments, to analyze the baseline models (MP-PDE, FNO, CNN), use [./MP_Neural_PDE_Solvers/analysis.ipynb](https://github.com/tailintalent/MP_Neural_PDE_Solvers/blob/master/analysis.ipynb).
 
 * For 2D experiments, to analyze the pretrained evolution model for LAMP, use [analysis_2D_evo.ipynb](https://github.com/snap-stanford/lamp/blob/master/analysis_2d_evo.ipynb).
 
-* For 2D experiments, to analyze the full model for LAMP and the baselines, use [analysis_2D_full.ipynb](https://github.com/snap-stanford/lamp/blob/master/analysis_2d_full.ipynb).
+* For 2D experiments, to analyze the full model for LAMP and the baselines, use [analysis_2D_full.py](https://github.com/snap-stanford/lamp/blob/master/analysis_2d_full.py).
 
 
 ## Related Projects

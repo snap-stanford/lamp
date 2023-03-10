@@ -12,7 +12,7 @@ We demonstrate that LAMP is able to adaptively trade-off computation to improve 
 
 <a href="url"><img src="https://github.com/snap-stanford/lamp/blob/master/assets/lamp_architecture.png" align="center" width="700" ></a>
 
-Learned remeshing and evolution by LAMP:
+Learned remeshing & evolution by LAMP:
 <a href="url"><img src="https://github.com/snap-stanford/lamp/blob/master/assets/gif-lamp.gif" align="center" width="300" ></a>
 
 ## Installation

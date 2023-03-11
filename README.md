@@ -111,6 +111,31 @@ For commands for baseline models in 1D, see the README in [./MP_Neural_PDE_Solve
 
 * For 2D experiments, to analyze the full model for LAMP and the baselines, use [analysis_2D_full.py](https://github.com/snap-stanford/lamp/blob/master/analysis_2d_full.py) and [analysis_2d_rl.ipynb](https://github.com/snap-stanford/lamp/blob/master/analysis_2d_rl.ipynb).
 
+## Visualization:
+
+Example visualization of learned remeshing & evolution:
+
+LAMP:
+
+<a href="url"><img src="https://github.com/snap-stanford/lamp/blob/master/assets/gif-lamp.gif" align="center" width="300" ></a>
+
+LAMP (no remeshing):
+
+<a href="url"><img src="https://github.com/snap-stanford/lamp/blob/master/assets/gif-lamp_no_remeshing.gif" align="center" width="300" ></a>
+
+MeshGraphNets + ground-truth remeshing:
+
+<a href="url"><img src="https://github.com/snap-stanford/lamp/blob/master/assets/gif-MeshGraphNets+gt remeshing.gif" align="center" width="300" ></a>
+
+
+MeshGraphNets + heuristic remeshing:
+
+<a href="url"><img src="https://github.com/snap-stanford/lamp/blob/master/assets/gif-MeshGraphNets+heuristic remeshing.gif" align="center" width="300" ></a>
+
+
+Ground-truth (fine-grained):
+
+<a href="url"><img src="https://github.com/snap-stanford/lamp/blob/master/assets/gif-ground_truth.gif" align="center" width="300" ></a>
 
 ## Related Projects
 

@@ -29,7 +29,7 @@ from lamp.datasets.mppde1d_dataset import get_data_pred, update_edge_attr_1d, up
 from lamp.pytorch_net.util import to_np_array, init_args, to_cpu, Attr_Dict
 from lamp.pytorch_net.net import fill_triangular, matrix_diag_transform
 from lamp.utils_model import FCBlock
-from lamp.utils import p, copy_data, sample_reward_beta, deepsnap_to_pyg, attrdict_to_pygdict, loss_op_core, parse_multi_step, to_tuple_shape, get_activation, seed_everything, edge_index_to_num
+from lamp.utils import p, copy_data, sample_reward_beta, deepsnap_to_pyg, attrdict_to_pygdict, loss_op_core, parse_multi_step, to_tuple_shape, get_activation, seed_everything, edge_index_to_num, add_edge_normal_curvature, load_data
 
 try:
     import dolfin as dolfin
@@ -5140,7 +5140,6 @@ class GNNPolicyAgent_Sampling(GNNRemesherPolicy):
         return tor_samnodes.reshape(-1,2)
     
     def choose_split_edge_GNNtopK_heuristic(self,outmesh):
-        from plasma.design.utils import add_edge_normal_curvature
         outmesh_curvature = add_edge_normal_curvature(outmesh)
         curvatures = outmesh_curvature.edge_curvature.detach()
         curvatures = torch.nan_to_num(curvatures,0)
@@ -5806,7 +5805,6 @@ if __name__ == "__main__":
     sys.path.append(os.path.join(os.path.dirname("__file__"), '..', '..'))
     sys.path.append(os.path.join(os.path.dirname("__file__"), '..', '..', '..'))
     sys.path.append(os.path.join(os.path.dirname("__file__"), '..', '..', '..', '..'))
-    from plasma.design.utils import load_data
 
     args = init_args({
         "dataset": "mppde1de-E2-100",

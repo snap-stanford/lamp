@@ -1520,7 +1520,6 @@ def full_forward(
     data_not_remeshed_gt = data.clone()
     if mode.startswith("test_gt_remesh"):
         data_008_not_remeshed_gt = data008.clone()
-        data_heuristic = data.clone().detach()
         data_heuristic_gt_evl = data.clone().detach()
     p.print("2.21", precision="millisecond", is_silent=args.is_timing<2, avg_window=1)
     for k in range(horizon):  # k=0,1,...H-1
@@ -1539,18 +1538,6 @@ def full_forward(
                     data_not_remeshed = copy_data(data,detach=True)
 
                 if mode.startswith("test_gt_remesh"):
-                    if "data_alt_gt_mesh" in locals():
-                        data_not_remeshed_gt_mesh = copy_data(data_alt_gt_mesh,detach=True)
-                    else:
-                        assert k == 0
-                        data_not_remeshed_gt_mesh = copy_data(data,detach=True)
-                    
-                    if "data_alt_008" in locals():
-                        data_not_remeshed_008 = copy_data(data_alt_008,detach=True)
-                    else:
-                        assert k == 0
-                        data_not_remeshed_008 = copy_data(data008,detach=True)
-
                     if "data_alt_008_gt_evl" in locals():
                         data_not_remeshed_008_gt_evl = copy_data(data_alt_008_gt_evl,detach=True)
                     else:
@@ -1570,12 +1557,6 @@ def full_forward(
                         data_not_remeshed_gt_mesh_gt_evl = copy_data(data,detach=True)
 
                     if heuristic:
-                        if "data_heuristic" in locals():
-                            data_remeshed_heuristic = copy_data(data_heuristic,detach=True)
-                        else:
-                            assert k == 0
-                            data_remeshed_heuristic = copy_data(data,detach=True)
-
                         if "data_heuristic_gt_evl" in locals():
                             data_remeshed_heuristic_gt_evl = copy_data(data_heuristic_gt_evl,detach=True)
                         else:
@@ -1593,12 +1574,9 @@ def full_forward(
             data = detach_data(data)
             data_not_remeshed = detach_data(data_not_remeshed)
             if heuristic:
-                data_heuristic = detach_data(data_heuristic)
                 data_heuristic_gt_evl = detach_data(data_heuristic_gt_evl)
             if mode.startswith("test_gt_remesh"):
-                data_not_remeshed_008 = detach_data(data_not_remeshed_008)
                 data_not_remeshed_008_gt_evl = detach_data(data_not_remeshed_008_gt_evl)
-                data_not_remeshed_gt_mesh = detach_data(data_not_remeshed_gt_mesh)
                 data_not_remeshed_gt_mesh_gt_evl= detach_data(data_not_remeshed_gt_mesh_gt_evl)
                 data_not_remeshed_gt_evl= detach_data(data_not_remeshed_gt_evl)
          
@@ -1619,9 +1597,7 @@ def full_forward(
         # data_clone = data.clone()
         data_remeshed, action_logprobs_dict, action_entropies_dict, action_probs = policy.act(data,reward_beta=sampled_reward,interp_index=k, is_timing=args.is_timing,is_eval_sample=args.is_eval_sample,debug=args.debug,data_gt=data_finegrain if args.debug else None,policy_input_feature=args.policy_input_feature)
         # pdb.set_trace()
-        if heuristic:
-            data_remeshed_heuristic, action_logprobs_dict_heuristic, action_entropies_dict_heuristic, action_probs_heuristic = policy.act(data_heuristic,reward_beta=sampled_reward,interp_index=k, is_timing=args.is_timing,is_eval_sample=args.is_eval_sample,debug=args.debug,data_gt=data_finegrain if args.debug else None,policy_input_feature=args.policy_input_feature,heuristic=True)
-            
+        if heuristic:            
             data_remeshed_heuristic_gt_evl, action_logprobs_dict_heuristic, action_entropies_dict_heuristic, action_probs_heuristic = policy.act(data_heuristic_gt_evl,reward_beta=sampled_reward,interp_index=k, is_timing=args.is_timing,is_eval_sample=args.is_eval_sample,debug=args.debug,data_gt=data_finegrain if args.debug else None,policy_input_feature=args.policy_input_feature,heuristic=True)
             
 
@@ -1644,10 +1620,7 @@ def full_forward(
             # data_remeshed_clone = data_remeshed.clone()
             _, _, data = evolution_model.one_step_interpolation_forward(data_remeshed, interp_index=k,is_timing=args.is_timing,use_remeshing=True,opt_evl=opt_evl,debug=args.debug,data_gt=data_finegrain if args.debug else None,noise_amp_val=args.noise_amp)
             if heuristic:
-                data_remeshed_heuristic = detach_data(data_remeshed_heuristic)
                 with torch.no_grad():
-                    _, _, data_heuristic = evolution_model.one_step_interpolation_forward(data_remeshed_heuristic, interp_index=k,is_timing=args.is_timing,use_remeshing=True,opt_evl=opt_evl,debug=args.debug,data_gt=data_finegrain if args.debug else None,noise_amp_val=0)
-
                     _, _, data_heuristic_gt_evl = evolution_model_alt.one_step_interpolation_forward(data_remeshed_heuristic_gt_evl, interp_index=k,is_timing=args.is_timing,use_remeshing=True,opt_evl=opt_evl,debug=args.debug,data_gt=data_finegrain if args.debug else None,noise_amp_val=0)
         else:            
             data, info_k = evolution_model(data_remeshed, pred_steps=1, returns_data=True)
@@ -1718,47 +1691,6 @@ def full_forward(
         record_data(info, [state_preds, t_evolve], ["state_preds", "t_evolve"])
 
         if heuristic:
-            velocity = data_heuristic.history[-1][:,3:] - data_heuristic.history[0][:,3:]
-            state_preds_heuristic = Attr_Dict({
-                # "x": data_heuristic.x.clone().detach(),
-                "x": velocity.clone().detach(),
-                "x_pos": data_heuristic.x_pos,
-                "edge_index": data_heuristic.edge_index,
-                "xfaces": data_heuristic.xfaces,
-                "x_bdd": torch.empty((data_heuristic.x.shape[0],0), dtype=torch.float32, device=data_heuristic.x.device), 
-                "original_shape": data_heuristic.original_shape,
-                "dyn_dims": data_heuristic.dyn_dims,
-                "compute_func": data_heuristic.compute_func,
-                "grid_keys": data_heuristic.grid_keys,
-                "part_keys": data_heuristic.part_keys, 
-                "time_step": data_heuristic.time_step, 
-                "sim_id": data_heuristic.sim_id,
-                "time_interval": data_heuristic.time_interval, 
-                "cushion_input": data_heuristic.cushion_input,
-                "bary_weights": data_heuristic.bary_weights,
-                "bary_indices": data_heuristic.bary_indices,
-                "hist_weights": data_heuristic.hist_weights,
-                "hist_indices": data_heuristic.hist_indices,
-                "yedge_index": data_heuristic.yedge_index,
-                "y_back": data_heuristic.y_back,
-                "y_tar": data_heuristic.y_tar,
-                "yface_list": data_heuristic.yface_list,
-                "history": [elm.clone().detach() for elm in data_heuristic.history],
-                "yfeatures": data_heuristic.yfeatures,
-                "node_dim": data_heuristic.node_dim,
-                "xface_list": data_heuristic.xface_list,
-                "reind_yfeatures": data_heuristic.reind_yfeatures,
-                "batch": data_heuristic.batch,
-                "batch_history": data_heuristic.batch_history,
-            })
-            if "edge_attr" in data_heuristic:
-                state_preds_heuristic.edge_attr = data_heuristic.edge_attr.clone().detach()
-            if "onehot_list" in data_heuristic:
-                state_preds_heuristic.onehot_list = data_heuristic.onehot_list
-                state_preds_heuristic.kinematics_list = data_heuristic.kinematics_list 
-            state_preds_heuristic.interp_index=k     
-            record_data(info, [state_preds_heuristic, t_evolve], ["state_preds_heuristic", "t_evolve"])
-
             velocity = data_heuristic_gt_evl.history[-1][:,3:] - data_heuristic_gt_evl.history[0][:,3:]
             state_preds_heuristic_gt_evl = Attr_Dict({
                 # "x": data_heuristic_gt_evl.x.clone().detach(),
@@ -1807,12 +1739,10 @@ def full_forward(
 
         if len(dict(to_tuple_shape(data.original_shape))["n0"]) == 0:
             if mode.startswith("test_gt_remesh"):
-                _, _, data_alt_gt_mesh = evolution_model.one_step_interpolation_forward(data_not_remeshed_gt_mesh, interp_index=k,is_timing=args.is_timing,use_remeshing=False,opt_evl=False,mode=mode,noise_amp_val=0, debug=True,data_gt=data_not_remeshed_gt.clone())
                 _, _, data_alt_gt_mesh_gt_evl = evolution_model_alt.one_step_interpolation_forward(data_not_remeshed_gt_mesh_gt_evl, interp_index=k,is_timing=args.is_timing,use_remeshing=False,opt_evl=False,mode=mode,noise_amp_val=0, debug=True,data_gt=data_not_remeshed_gt.clone())
                 _, _, data_alt = evolution_model.one_step_interpolation_forward(data_not_remeshed, interp_index=k,is_timing=args.is_timing,use_remeshing=False,opt_evl=False,mode=mode,noise_amp_val=0)
                 _, _, data_alt_gt_evl = evolution_model_alt.one_step_interpolation_forward(data_not_remeshed_gt_evl, interp_index=k,is_timing=args.is_timing,use_remeshing=False,opt_evl=False,mode=mode,noise_amp_val=0)
                 _, _, data_alt_008_gt_evl = evolution_model_alt.one_step_interpolation_forward(data_not_remeshed_008_gt_evl, interp_index=k,is_timing=args.is_timing,use_remeshing=False,opt_evl=False,mode=mode,noise_amp_val=0, debug=True,data_gt=data_008_not_remeshed_gt.clone())
-                _, _, data_alt_008 = evolution_model.one_step_interpolation_forward(data_not_remeshed_008, interp_index=k,is_timing=args.is_timing,use_remeshing=False,opt_evl=False,mode=mode,noise_amp_val=0, debug=True,data_gt=data_008_not_remeshed_gt.clone())
             elif not (mode=="test_remeshing"):
                 # data_not_remeshed_clone = data_not_remeshed.clone()
                 _, _, data_alt = evolution_model_alt.one_step_interpolation_forward(data_not_remeshed, interp_index=k,is_timing=args.is_timing,use_remeshing=False,opt_evl=False,mode=mode,noise_amp_val=args.noise_amp)
@@ -1915,46 +1845,6 @@ def full_forward(
 
             record_data(info, [state_preds_alt_gt_evl, t_evolve_alt], ["state_preds_alt_gt_evl", "t_evolve_alt"])
 
-            velocity = data_alt_gt_mesh.history[-1][:,3:] - data_alt_gt_mesh.history[0][:,3:]
-            state_preds_alt_gt_mesh = Attr_Dict({
-                # "x": data_alt_gt_mesh.x.clone().detach(),
-                "x": velocity.clone().detach(),
-                "x_pos": data_alt_gt_mesh.x_pos,
-                "edge_index": data_alt_gt_mesh.edge_index,
-                "xfaces": data_alt_gt_mesh.xfaces,
-                "x_bdd":  torch.empty((data_alt_gt_mesh.x.shape[0],0), dtype=torch.float32, device=data_alt_gt_mesh.x.device), 
-                "original_shape": data_alt_gt_mesh.original_shape,
-                "dyn_dims": data_alt_gt_mesh.dyn_dims,
-                "compute_func": data_alt_gt_mesh.compute_func,
-                "grid_keys": data_alt_gt_mesh.grid_keys,
-                "part_keys": data_alt_gt_mesh.part_keys, 
-                "time_step": data_alt_gt_mesh.time_step, 
-                "sim_id": data_alt_gt_mesh.sim_id,
-                "time_interval": data_alt_gt_mesh.time_interval, 
-                "cushion_input": data_alt_gt_mesh.cushion_input,
-                "bary_weights": data_alt_gt_mesh.bary_weights,
-                "bary_indices": data_alt_gt_mesh.bary_indices,
-                "hist_weights": data_alt_gt_mesh.hist_weights,
-                "hist_indices": data_alt_gt_mesh.hist_indices,
-                "yedge_index": data_alt_gt_mesh.yedge_index,
-                "y_back": data_alt_gt_mesh.y_back,
-                "y_tar": data_alt_gt_mesh.y_tar,
-                "yface_list": data_alt_gt_mesh.yface_list,
-                "history": [elm.clone().detach() for elm in data_alt_gt_mesh.history],
-                "yfeatures": data_alt_gt_mesh.yfeatures,
-                "node_dim": data_alt_gt_mesh.node_dim,
-                "xface_list": data_alt_gt_mesh.xface_list,
-                "reind_yfeatures": data_alt_gt_mesh.reind_yfeatures,
-                "batch": data_alt_gt_mesh.batch,
-                "batch_history": data_alt_gt_mesh.batch_history,
-            })
-            if "edge_attr" in data_alt_gt_mesh:
-                state_preds_alt_gt_mesh.edge_attr = data_alt_gt_mesh.edge_attr
-            if "onehot_list" in data_alt_gt_mesh:
-                state_preds_alt_gt_mesh.onehot_list = data_alt_gt_mesh.onehot_list
-                state_preds_alt_gt_mesh.kinematics_list = data_alt_gt_mesh.kinematics_list 
-            state_preds_alt_gt_mesh.interp_index = k
-            record_data(info, [state_preds_alt_gt_mesh, t_evolve_alt], ["state_preds_alt_gt_mesh", "t_evolve_alt"])
             
             velocity = data_alt_gt_mesh_gt_evl.history[-1][:,3:] - data_alt_gt_mesh_gt_evl.history[0][:,3:]
             state_preds_alt_gt_mesh_gt_evl = Attr_Dict({
@@ -2040,48 +1930,6 @@ def full_forward(
 
             record_data(info, [state_preds_alt_008_gt_evl, t_evolve_alt], ["state_preds_alt_008_gt_evl", "t_evolve_alt"])
 
-
-            velocity = data_alt_008.history[-1][:,3:] - data_alt_008.history[0][:,3:]
-            state_preds_alt_008 = Attr_Dict({
-                # "x": data_alt_008.x.clone().detach(),
-                "x": velocity.clone().detach(),
-                "x_pos": data_alt_008.x_pos,
-                "edge_index": data_alt_008.edge_index,
-                "xfaces": data_alt_008.xfaces,
-                "x_bdd":  torch.empty((data_alt_008.x.shape[0],0), dtype=torch.float32, device=data_alt_008.x.device), 
-                "original_shape": data_alt_008.original_shape,
-                "dyn_dims": data_alt_008.dyn_dims,
-                "compute_func": data_alt_008.compute_func,
-                "grid_keys": data_alt_008.grid_keys,
-                "part_keys": data_alt_008.part_keys, 
-                "time_step": data_alt_008.time_step, 
-                "sim_id": data_alt_008.sim_id,
-                "time_interval": data_alt_008.time_interval, 
-                "cushion_input": data_alt_008.cushion_input,
-                "bary_weights": data_alt_008.bary_weights,
-                "bary_indices": data_alt_008.bary_indices,
-                "hist_weights": data_alt_008.hist_weights,
-                "hist_indices": data_alt_008.hist_indices,
-                "yedge_index": data_alt_008.yedge_index,
-                "y_back": data_alt_008.y_back,
-                "y_tar": data_alt_008.y_tar,
-                "yface_list": data_alt_008.yface_list,
-                "history": [elm.clone().detach() for elm in data_alt_008.history],
-                "yfeatures": data_alt_008.yfeatures,
-                "node_dim": data_alt_008.node_dim,
-                "xface_list": data_alt_008.xface_list,
-                "reind_yfeatures": data_alt_008.reind_yfeatures,
-                "batch": data_alt_008.batch,
-                "batch_history": data_alt_008.batch_history,
-            })
-            if "edge_attr" in data_alt_008:
-                state_preds_alt_008.edge_attr = data_alt_008.edge_attr
-            if "onehot_list" in data_alt_008:
-                state_preds_alt_008.onehot_list = data_alt_008.onehot_list
-                state_preds_alt_008.kinematics_list = data_alt_008.kinematics_list 
-            state_preds_alt_008.interp_index = k
-
-            record_data(info, [state_preds_alt_008, t_evolve_alt], ["state_preds_alt_008", "t_evolve_alt"])
 
         ##################################################
         # Evolution with reinterp fine grid mesh [idea lower bdd of mse]
@@ -2172,11 +2020,6 @@ def full_forward(
                 loss, loss_mse, data_gt = get_loss_2d_refined(data, data_finegrain, k, opt_evl=opt_evl)
                 if mode.startswith("test_gt_remesh"):
                     loss_alt, loss_alt_mse, _ = get_loss_2d_refined(data_alt, data_finegrain, k, opt_evl=opt_evl)
-                    record_data(info, [loss_alt_mse], ["evolution/loss_alt_mse"])
-                    record_data(info, [loss_alt], ["evolution/loss_alt"])
-                    loss_alt_gt_mesh, loss_alt_gt_mesh_mse, _ = get_loss_2d_refined(data_alt_gt_mesh, data_finegrain, k, opt_evl=opt_evl)
-                    record_data(info, [loss_alt_gt_mesh_mse], ["evolution/loss_alt_gt_mesh_mse"])
-                    record_data(info, [loss_alt_gt_mesh], ["evolution/loss_alt_gt_mesh"])
                     loss_alt_gt_evl, loss_alt_gt_evl_mse, _ = get_loss_2d_refined(data_alt_gt_evl, data_finegrain, k, opt_evl=opt_evl)
                     record_data(info, [loss_alt_gt_evl_mse], ["evolution/loss_alt_gt_evl_mse"])
                     record_data(info, [loss_alt_gt_evl], ["evolution/loss_alt_gt_evl"])
@@ -2184,18 +2027,10 @@ def full_forward(
                     record_data(info, [loss_alt_gt_mesh_gt_evl_mse], ["evolution/loss_alt_gt_mesh_gt_evl_mse"])
                     record_data(info, [loss_alt_gt_mesh_gt_evl], ["evolution/loss_alt_gt_mesh_gt_evl"])
 
-                    loss_alt_008, loss_alt_008_mse, _ = get_loss_2d_refined(data_alt_008, data_finegrain, k, opt_evl=opt_evl)
-                    record_data(info, [loss_alt_008_mse], ["evolution/loss_alt_008_mse"])
-                    record_data(info, [loss_alt_008], ["evolution/loss_alt_008"])
-
                     loss_alt_008_gt_evl, loss_alt_008_gt_evl_mse, _ = get_loss_2d_refined(data_alt_008_gt_evl, data_finegrain, k, opt_evl=opt_evl)
                     record_data(info, [loss_alt_008_gt_evl_mse], ["evolution/loss_alt_008_gt_evl_mse"])
                     record_data(info, [loss_alt_008_gt_evl], ["evolution/loss_alt_008_gt_evl"])
                     if heuristic:
-                        loss_heuristic, loss_heuristic_mse, _ = get_loss_2d_refined(data_heuristic, data_finegrain, k, opt_evl=opt_evl)
-                        record_data(info, [loss_heuristic_mse], ["evolution/loss_heuristic_mse"])
-                        record_data(info, [loss_heuristic], ["evolution/loss_heuristic"])
-
                         loss_heuristic_gt_evl, loss_heuristic_gt_evl_mse, _ = get_loss_2d_refined(data_heuristic_gt_evl, data_finegrain, k, opt_evl=opt_evl)
                         record_data(info, [loss_heuristic_gt_evl_mse], ["evolution/loss_heuristic_gt_evl_mse"])
                         record_data(info, [loss_heuristic_gt_evl], ["evolution/loss_heuristic_gt_evl"])
@@ -2285,7 +2120,7 @@ def full_forward(
         "reward_preds", "rewards", "rewards_interp_alt",
         "evolution/loss", "evolution/loss_alt", "evolution/loss_interp_alt", "evolution/loss_fine",
         "evolution/loss_mse", "evolution/loss_alt_mse", "evolution/loss_interp_alt_mse", "evolution/loss_fine_mse",
-        "evolution/loss_alt_gt_mesh_mse","evolution/loss_alt_gt_evl_mse","evolution/loss_alt_gt_mesh_gt_evl_mse",
+        "evolution/loss_alt_gt_evl_mse","evolution/loss_alt_gt_mesh_gt_evl_mse",
         "evolution/loss_alt_008_mse","evolution/loss_alt_008_gt_evl_mse","evolution/loss_heuristic_mse","evolution/loss_heuristic_gt_evl_mse",
         "r/lossdiff", "r/statediff", "r/timediff",
         "v/lossdiff", "v/statediff", "v/timediff",

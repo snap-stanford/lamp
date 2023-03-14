@@ -132,10 +132,6 @@ def load_data(args, **kwargs):
             if hasattr(data, "x_pos"):
                 x_pos = deepcopy(data.x_pos)
                 G["node_pos"] = {"n0": x_pos}
-            if hasattr(data, "is_1d_periodic"):
-                G["is_1d_periodic"] = data.is_1d_periodic
-            if hasattr(data, "is_normalize_pos"):
-                G["is_normalize_pos"] = data.is_normalize_pos
             if hasattr(data, "dataset"):
                 G["dataset"] = data.dataset
             if hasattr(data, "xfaces"):
@@ -177,21 +173,17 @@ def load_data(args, **kwargs):
     else:
         ebm_t_list = list(latent_multi_step_dict.keys())
     max_pred_steps = max(list(multi_step_dict.keys()) + list(latent_multi_step_dict.keys()) + [1] + disc_t_list + ebm_t_list) * args.temporal_bundle_steps
-    filename_train_val = os.path.join(PDE_PATH_LOCAL, "deepsnap", "{}_train_val_in_{}_out_{}{}{}{}{}{}.p".format(
+    filename_train_val = os.path.join(PDE_PATH_LOCAL, "deepsnap", "{}_train_val_in_{}_out_{}{}{}{}.p".format(
         args.dataset, args.input_steps * args.temporal_bundle_steps, max_pred_steps, 
         "_itv_{}".format(args.time_interval) if args.time_interval > 1 else "",
         "_yvar_{}".format(args.is_y_variable_length) if args.is_y_variable_length is True else "",
         "_noise_{}".format(args.data_noise_amp) if args.data_noise_amp > 0 else "",
-        "_periodic_{}".format(args.is_1d_periodic) if args.is_1d_periodic else "",
-        "_normpos_{}".format(args.is_normalize_pos) if args.is_normalize_pos is False else "",
     ))
-    filename_test = os.path.join(PDE_PATH_LOCAL, "deepsnap", "{}_test_in_{}_out_{}{}{}{}{}{}.p".format(
+    filename_test = os.path.join(PDE_PATH_LOCAL, "deepsnap", "{}_test_in_{}_out_{}{}{}{}.p".format(
         args.dataset, args.input_steps * args.temporal_bundle_steps, max_pred_steps, 
         "_itv_{}".format(args.time_interval) if args.time_interval > 1 else "",
         "_yvar_{}".format(args.is_y_variable_length) if args.is_y_variable_length is True else "",
         "_noise_{}".format(args.data_noise_amp) if args.data_noise_amp > 0 else "",
-        "_periodic_{}".format(args.is_1d_periodic) if args.is_1d_periodic else "",
-        "_normpos_{}".format(args.is_normalize_pos) if args.is_normalize_pos is False else "",
     ))
     is_to_deepsnap = True
     if (os.path.isfile(filename_train_val) or args.is_test_only) and os.path.isfile(filename_test) and args.n_train == "-1" and not args.dataset.startswith("arcsimmesh"):
@@ -294,8 +286,6 @@ def load_data(args, **kwargs):
                     output_steps=max_pred_steps,
                     time_interval=args.time_interval,
                     is_y_diff=args.is_y_diff,
-                    is_1d_periodic=args.is_1d_periodic,
-                    is_normalize_pos=args.is_normalize_pos,
                     split="train",
                 )
                 pyg_dataset_val = MPPDE1D(
@@ -304,8 +294,6 @@ def load_data(args, **kwargs):
                     output_steps=max_pred_steps,
                     time_interval=args.time_interval,
                     is_y_diff=args.is_y_diff,
-                    is_1d_periodic=args.is_1d_periodic,
-                    is_normalize_pos=args.is_normalize_pos,
                     split="valid",
                 )
             pyg_dataset_test = MPPDE1D(
@@ -314,8 +302,6 @@ def load_data(args, **kwargs):
                 output_steps=max_pred_steps,
                 time_interval=args.time_interval,
                 is_y_diff=args.is_y_diff,
-                is_1d_periodic=args.is_1d_periodic,
-                is_normalize_pos=args.is_normalize_pos,
                 split="test",
             )
         elif args.dataset.startswith("arcsimmesh"):
@@ -487,8 +473,6 @@ def update_legacy_default_hyperparam(Dict):
         "processor_aggr":"max",
         "fix_alt_evolution_model":False,
         "test_reward_random_sample":False,
-        "is_1d_periodic": False,
-        "is_normalize_pos": True,
         
     }
     for key, item in default_param.items():
@@ -2728,10 +2712,6 @@ def deepsnap_to_pyg(data, is_flatten=False, use_pos=False, args_dataset=None):
     )
     if hasattr(data, "edge_attr"):
         data_pyg.edge_attr = data.edge_attr[("n0", "0", "n0")]
-    if hasattr(data, "is_1d_periodic"):
-        data_pyg.is_1d_periodic = data.is_1d_periodic
-    if hasattr(data, "is_normalize_pos"):
-        data_pyg.is_normalize_pos = data.is_normalize_pos
     if hasattr(data, "dataset"):
         data_pyg.dataset = data.dataset
     if hasattr(data, "param"):
@@ -2744,11 +2724,7 @@ def deepsnap_to_pyg(data, is_flatten=False, use_pos=False, args_dataset=None):
     if hasattr(data, "mask"):
         data_pyg.mask = data.mask["n0"]
     if is_flatten:
-        is_1d_periodic = to_tuple_shape(data.is_1d_periodic)
-        if is_1d_periodic:
-            lst = [data_pyg.x.flatten(start_dim=1)]
-        else:
-            lst = [data_pyg.x.flatten(start_dim=1), data_pyg.x_bdd]
+        lst = [data_pyg.x.flatten(start_dim=1), data_pyg.x_bdd]
         if use_pos:
             lst.insert(1, data_pyg.x_pos)
         if hasattr(data_pyg, "dataset") and to_tuple_shape(data_pyg.dataset).startswith("mppde1dh"):

@@ -31,8 +31,6 @@ class MPPDE1D(Dataset):
         output_steps=1,
         time_interval=1,
         is_y_diff=False,
-        is_1d_periodic=True,
-        is_normalize_pos=False,
         split="train",
         transform=None,
         pre_transform=None,
@@ -55,8 +53,6 @@ class MPPDE1D(Dataset):
         self.output_steps = output_steps
         self.time_interval = time_interval
         self.is_y_diff = is_y_diff
-        self.is_1d_periodic = is_1d_periodic
-        self.is_normalize_pos = is_normalize_pos
         self.split = split
         assert self.split in ["train", "valid", "test"]
         self.verbose = verbose
@@ -144,7 +140,7 @@ class MPPDE1D(Dataset):
             torch.save(_repr(self.pre_filter), path)
 
     def get_edge_index(self):
-        edge_index_filename = os.path.join(self.processed_dir, f"{self.dataset}_edge_index{'_periodic' if self.is_1d_periodic else ''}.p")
+        edge_index_filename = os.path.join(self.processed_dir, f"{self.dataset}_edge_index.p")
         mask_valid_filename = os.path.join(self.root, self.dirname, f"{self.dataset}_mask_index.p")
         if os.path.isfile(edge_index_filename) and os.path.isfile(mask_valid_filename):
             edge_index = pickle.load(open(edge_index_filename, "rb"))
@@ -163,10 +159,6 @@ class MPPDE1D(Dataset):
                 if j + 1 < cols: #and cube[i, j]: #not in velo_invalid_ids and cube[i, j+1] not in velo_invalid_ids:
                     edge_list.append([cube[i, j], cube[i, j+1]])
                     edge_list.append([cube[i, j+1], cube[i, j]])
-        if self.is_1d_periodic:
-            for j in range(cols):
-                edge_list.append([cube[0, j], cube[rows-1, j]])
-                edge_list.append([cube[rows-1, j], cube[0, j]])
         edge_index = torch.LongTensor(edge_list).T
         pickle.dump(edge_index, open(edge_index_filename, "wb"))
         pickle.dump(mask_valid, open(mask_valid_filename, "wb"))
@@ -192,9 +184,8 @@ class MPPDE1D(Dataset):
         x_bdd[0] = 0
         x_bdd[-1] = 0
         x_pos = torch.FloatTensor(x_pos)[...,None]
-        if self.is_normalize_pos:
-            for dim in range(len(self.original_shape)):
-                x_pos[..., dim] /= self.original_shape[dim]
+        for dim in range(len(self.original_shape)):
+            x_pos[..., dim] /= self.original_shape[dim]
 
         data = Data(
             x=x_dens.reshape(-1, *x_dens.shape[-1:], 1).clone(),       # [number_nodes: 64 * 64, input_steps, 1]
@@ -209,8 +200,6 @@ class MPPDE1D(Dataset):
             dyn_dims=self.dyn_dims,
             compute_func=(0, None),
             dataset=self.dataset,
-            is_1d_periodic=self.is_1d_periodic,
-            is_normalize_pos=self.is_normalize_pos,
         )
         # data = Attr_Dict(
         #     node_feature={"n0": x_dens.reshape(-1, *x_dens.shape[-1:], 1).clone()},
@@ -234,36 +223,11 @@ class MPPDE1D(Dataset):
         return data
 
 
-# In[ ]:
-
-
-def update_rel_pos(edge_attr, is_normalize_pos=False):
-    assert len(edge_attr.shape) == 2 and edge_attr.shape[1] == 1
-    if is_normalize_pos:
-        id_he = torch.where((edge_attr.squeeze(-1) + 0.16).abs() < 1e-7)[0]
-        id_eh = torch.where((edge_attr.squeeze(-1) - 0.16).abs() < 1e-7)[0]
-        edge_attr[id_he, 0] = 0.16/99
-        edge_attr[id_eh, 0] = -0.16/99
-        id_he16 = torch.where((edge_attr.squeeze(-1) + 16).abs() < 1e-7)[0]
-        assert len(id_he16) == 0, "There are {} rel_pos that has value of -16. Check is_normalize_pos".format(len(id_he16))
-    else:
-        id_he = torch.where((edge_attr.squeeze(-1) + 16).abs() < 1e-7)[0]
-        id_eh = torch.where((edge_attr.squeeze(-1) - 16).abs() < 1e-7)[0]
-        edge_attr[id_he, 0] = 16/99
-        edge_attr[id_eh, 0] = -16/99
-        id_he016 = torch.where((edge_attr.squeeze(-1) + 0.16).abs() < 1e-8)[0]
-        assert len(id_he016) == 0, "There are {} rel_pos that has value of -0.16. Check args.is_normalize_pos".format(len(id_he016))
-    return edge_attr
-
-
 def update_edge_attr_1d(data):
     dataset_str = to_tuple_shape(data.dataset)
-    is_normalize_pos = False if hasattr(data, "is_normalize_pos") and (not to_tuple_shape(data.is_normalize_pos)) else True
     if dataset_str.split("-")[0] != "mppde1d":
         if hasattr(data, "node_feature"):
             edge_attr = data.node_pos["n0"][data.edge_index[("n0","0","n0")][0]] - data.node_pos["n0"][data.edge_index[("n0","0","n0")][1]]
-            if hasattr(data, "is_1d_periodic") and to_tuple_shape(data.is_1d_periodic):
-                edge_attr = update_rel_pos(edge_attr, is_normalize_pos=is_normalize_pos)
             if dataset_str.split("-")[0] in ["mppde1de"]:
                 data.edge_attr = {("n0","0","n0"): edge_attr}
             elif dataset_str.split("-")[0] in ["mppde1df", "mppde1dg", "mppde1dh"]:
@@ -274,8 +238,6 @@ def update_edge_attr_1d(data):
                 data.x_bdd = {"n0": 1 - data.x_bdd["n0"]}
         else:
             edge_attr = data.x_pos[data.edge_index[0]] - data.x_pos[data.edge_index[1]]
-            if hasattr(data, "is_1d_periodic") and to_tuple_shape(data.is_1d_periodic):
-                edge_attr = update_rel_pos(edge_attr, is_normalize_pos=is_normalize_pos)
             if dataset_str.split("-")[0] in ["mppde1de"]:
                 data.edge_attr = edge_attr
             elif dataset_str.split("-")[0] in ["mppde1df", "mppde1dg", "mppde1dh"]:
@@ -321,10 +283,6 @@ def get_data_pred(state_preds, step, data, **kwargs):
         dataset=to_tuple_shape(data.dataset),
         batch=kwargs["batch"] if "batch" in kwargs else data.batch,
     )
-    if hasattr(data, "is_1d_periodic"):
-        data_pred["is_1d_periodic"] = data.is_1d_periodic
-    if hasattr(data, "is_normalize_pos"):
-        data_pred["is_normalize_pos"] = data.is_normalize_pos
     update_edge_attr_1d(data_pred)
     return data_pred
 
@@ -339,7 +297,6 @@ if __name__ == "__main__":
         output_steps=1,
         time_interval=1,
         is_y_diff=False,
-        is_1d_periodic=True,
         split="valid",
         transform=None,
         pre_transform=None,

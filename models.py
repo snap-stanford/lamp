@@ -2158,172 +2158,6 @@ def full_forward(
     return data, info
 
 
-# # EBM:
-
-# ### Model definition:
-
-# In[ ]:
-
-
-class ConservEBM(nn.Module):
-    def __init__(
-        self,
-        mode="Siamese-4-sum",
-        net_mode="cnn",
-        combine_mode="catdiff",
-        in_channels=10,
-        input_shape=None,
-        channel_base=128,
-        is_spec_norm=True,
-        act_name="elu",
-    ):
-        super(ConservEBM, self).__init__()
-        self.mode = mode
-        self.net_mode = net_mode
-        self.combine_mode = combine_mode
-        self.in_channels = in_channels
-        self.input_shape = input_shape
-        self.pos_dim = len(input_shape)
-        self.channel_base = channel_base
-        self.aggr_mode = self.mode.split("-")[2]
-        self.is_spec_norm = is_spec_norm
-        self.act_name = act_name
-        if self.mode.startswith("Siamese"):
-            output_size = eval(self.mode.split("-")[1])
-            if self.combine_mode == "concat":
-                combine_output_size = output_size * 2
-            elif self.combine_mode == "catdiff":
-                combine_output_size = output_size * 3
-            elif self.combine_mode in ["diff", "mse"]:
-                combine_output_size = output_size
-            else:
-                raise
-            if self.net_mode == "mlp":
-                self.net = MLP(input_size=in_channels*int(np.prod(input_shape)),
-                               n_neurons=32,
-                               n_layers=3,
-                               output_size=output_size,
-                               act_name=self.act_name,
-                               last_layer_linear=True,
-                              )
-            elif self.net_mode == "cnn":
-                if is_spec_norm:
-                    self.conv1 = spectral_norm(nn.Conv2d(in_channels, channel_base, 3, padding=1), std=1)
-                else:
-                    self.conv1 = nn.Conv2d(in_channels, channel_base, 3, padding=1)
-                self.blocks_branch = nn.ModuleList([
-                    ResBlock(channel_base, channel_base, downsample=True, is_spec_norm=is_spec_norm),
-                    ResBlock(channel_base, channel_base, is_spec_norm=is_spec_norm),
-                    ResBlock(channel_base, channel_base*2, downsample=True, is_spec_norm=is_spec_norm),
-                    ResBlock(channel_base*2, channel_base*2, is_spec_norm=is_spec_norm),
-                    ResBlock(channel_base*2, channel_base*2, downsample=True, is_spec_norm=is_spec_norm),
-                    ResBlock(channel_base*2, channel_base*2, is_spec_norm=is_spec_norm),
-                ])
-                self.linear = nn.Linear(channel_base*2, output_size)
-            else:
-                raise
-            net_combine_n_layers = eval(self.combine_mode.split("-")[1]) if len(self.combine_mode.split("-")) > 1 else 2
-            self.net_combine = MLP(
-                input_size=combine_output_size,
-                n_neurons=combine_output_size,
-                n_layers=net_combine_n_layers,
-                output_size=1,
-                act_name=self.act_name,
-                last_layer_linear=False,
-            )
-
-
-    def forward(self, input, future, mask=None):
-        """Given input and future pair, return a single energy value for each pair.
-
-        Args:
-            input:  [B, n_nodes, C]
-            future: [B, n_nodes, C]
-            mask:   [1, n_nodes, 1]. Default None.
-
-            where B is the batch size, C is the number of channels, and n_nodes 
-            is the number of nodes in one example/state. At one input state, there
-            can be multiple nodes, for example in 2D grid where at each time, there 
-            are H*W nodes. In pendulum, there is only one node at each state. The nodes
-            is denoting the spatial degree of freedom. Remember that in the dataset, 
-            each data.x has dimension of [n_nodes, time_steps, feature_size]. This 
-            representation is universal, no matter how complicated the system is.
-        """
-
-        if mask is not None:
-            assert len(mask.shape) == 3 and mask.shape[0] == 1 and mask.shape[2] == 1  # mask: [1, n_nodes, 1]
-            input = input * mask
-            future = future * mask
-        if self.mode.startswith("Siamese"):
-            if self.net_mode == "mlp":
-                input = input.view(input.shape[0], -1)
-                future = future.view(future.shape[0], -1)
-                out_0 = self.net(input)
-                out_1 = self.net(future)
-
-            elif self.net_mode == "cnn":
-                def aggr_fn(out, aggr_mode):
-                    if aggr_mode == "sum":
-                        out = out.view(out.shape[0], out.shape[1], -1).sum(2)
-                    elif aggr_mode == "max":
-                        out = out.view(out.shape[0], out.shape[1], -1).max(2)[0]
-                    else:
-                        raise
-                    return out
-
-                # Input branch:
-                input = input.reshape(input.shape[0], *self.input_shape, input.shape[-1])  # input: previous: [B, n_nodes:H*W, C]; after: [B, H, W, C]
-                input = input.permute(0,3,1,2)
-                out_0 = F.leaky_relu(self.conv1(input), negative_slope=0.2)
-
-                for i, block in enumerate(self.blocks_branch):
-                    out_0 = block(out_0)
-                out_0 = F.relu(out_0)
-                out_0 = aggr_fn(out_0, self.aggr_mode)  # [B, channel_base]
-                out_0 = self.linear(out_0)
-
-                # Future branch:
-                future = future.reshape(future.shape[0], *self.input_shape, future.shape[-1])
-                future = future.permute(0,3,1,2)
-                out_1 = F.leaky_relu(self.conv1(future), negative_slope=0.2)
-                for i, block in enumerate(self.blocks_branch):
-                    out_1 = block(out_1)
-                out_1 = F.relu(out_1)
-                out_1 = aggr_fn(out_1, self.aggr_mode)  # [B, channel_base]
-                out_1 = self.linear(out_1)
-            else:
-                raise
-
-            if self.combine_mode == "concat":
-                out = self.net_combine(torch.cat([out_0, out_1], 1))
-            elif self.combine_mode == "catdiff":
-                out = self.net_combine(torch.cat([out_0, out_1, out_1-out_0], 1))
-            elif self.combine_mode == "diff":
-                out = self.net_combine(out_1-out_0)
-            elif self.combine_mode == "mse":
-                out = self.net_combine((out_1-out_0).square())
-            else:
-                raise
-        else:
-            raise
-        return out, (out_0, out_1)
-
-
-    @property
-    def model_dict(self):
-        model_dict = {"type": "ConservEBM"}
-        model_dict["mode"] = self.mode
-        model_dict["net_mode"] = self.net_mode
-        model_dict["combine_mode"] = self.combine_mode
-        model_dict["in_channels"] = self.in_channels
-        model_dict["input_shape"] = self.input_shape
-        model_dict["channel_base"] = self.channel_base
-        model_dict["is_spec_norm"] = self.is_spec_norm
-        model_dict["act_name"] = self.act_name
-        model_dict["state_dict"] = to_cpu(self.state_dict())
-        return model_dict
-
-
 ################################################################
 #  1d fourier layer
 ################################################################
@@ -3135,7 +2969,7 @@ def get_model(
     elif args.algo.startswith("Value_Model"):
         if len(dict(data_eg.original_shape)["n0"]) == 1:
             model = Value_Model(
-                input_size=input_size["n0"] + (1 if not args.is_1d_periodic else 0) + (1 if args.use_pos else 0) + (3 if args.dataset.startswith("mppde1dh") else 0),  # +1 for x_bdd (boundary nodes), +1 for use_pos, +3 for parameters
+                input_size=input_size["n0"] + 1 + (1 if args.use_pos else 0) + (3 if args.dataset.startswith("mppde1dh") else 0),  # +1 for x_bdd (boundary nodes), +1 for use_pos, +3 for parameters
                 output_size=1,
                 edge_dim=1 if args.dataset.startswith("mppde1de") else 2,
                 latent_dim=args.value_latent_size,
@@ -3170,7 +3004,7 @@ def get_model(
     elif args.algo.startswith("GNNPolicySizing"):
         if len(dict(data_eg.original_shape)["n0"]) == 1:
             model = GNNPolicySizing(
-                input_size=input_size["n0"] + (1 if not args.is_1d_periodic else 0) + (1 if args.use_pos else 0) + (3 if args.dataset.startswith("mppde1dh") else 0),  # +1 for x_bdd (boundary nodes), +1 for use_pos, +3 for parameters
+                input_size=input_size["n0"] + 1 + (1 if args.use_pos else 0) + (3 if args.dataset.startswith("mppde1dh") else 0),  # +1 for x_bdd (boundary nodes), +1 for use_pos, +3 for parameters
                 output_size=1 if args.dataset.startswith("mppde1d") else 4,
                 sizing_field_dim=1 if args.dataset.startswith("mppde1d") else 4,
                 edge_dim=1 if args.dataset.startswith("mppde1de") else 2,
@@ -3223,7 +3057,7 @@ def get_model(
     elif args.algo.startswith("GNNPolicyAgent"):
         if len(dict(data_eg.original_shape)["n0"]) == 1:
             model = GNNPolicyAgent(
-                input_size=input_size["n0"] + (1 if not args.is_1d_periodic else 0) + (1 if args.use_pos else 0) + (3 if args.dataset.startswith("mppde1dh") else 0),  # +1 for x_bdd (boundary nodes), +1 for use_pos, +3 for parameters
+                input_size=input_size["n0"] + 1 + (1 if args.use_pos else 0) + (3 if args.dataset.startswith("mppde1dh") else 0),  # +1 for x_bdd (boundary nodes), +1 for use_pos, +3 for parameters
                 edge_dim=1 if args.dataset.startswith("mppde1de") else 2,
                 dataset=args.dataset,
                 output_size=1,
@@ -3301,7 +3135,7 @@ def get_model(
         diffMLP = True if args.algo.startswith("gnnremesher^diff") else False
         if len(dict(data_eg.original_shape)["n0"]) == 1:
             model = GNNRemesher(
-                input_size=input_size["n0"]+(1 if not args.is_1d_periodic else 0)+(1 if args.use_pos else 0) + (3 if args.dataset.startswith("mppde1dh") else 0),  # +1 for x_bdd (boundary nodes), +1 for use_pos, +3 for parameters
+                input_size=input_size["n0"]+ 1 + (1 if args.use_pos else 0) + (3 if args.dataset.startswith("mppde1dh") else 0),  # +1 for x_bdd (boundary nodes), +1 for use_pos, +3 for parameters
                 output_size=output_size["n0"] * args.temporal_bundle_steps,
                 edge_dim=1 if args.dataset.startswith("mppde1de") else 2,
                 sizing_field_dim=0,
@@ -3383,7 +3217,7 @@ def get_model(
             )            
         else:
             value_model = Value_Model(
-                input_size=input_size["n0"]+(1 if not args.is_1d_periodic else 0)+(1 if args.use_pos else 0) + (3 if args.dataset.startswith("mppde1dh") else 0),  # +1 for x_bdd (boundary nodes), +1 for use_pos, +3 for parameters
+                input_size=input_size["n0"]+ 1 + (1 if args.use_pos else 0) + (3 if args.dataset.startswith("mppde1dh") else 0),  # +1 for x_bdd (boundary nodes), +1 for use_pos, +3 for parameters
                 output_size=1,
                 edge_dim=1 if args.dataset.startswith("mppde1de") else 2,
                 latent_dim=args.value_latent_size,
@@ -3416,7 +3250,7 @@ def get_model(
             print("sampling loading")
             sampler_model = GNNPolicyAgent_Sampling(
                 # input_size=input_size["n0"] + 1 + (1 if args.use_pos else 0) + (3 if args.dataset.startswith("mppde1dh") else 0),  # +1 for x_bdd (boundary nodes), +1 for use_pos, +3 for parameters
-                input_size=25+(1 if not args.is_1d_periodic else 0),
+                input_size=25+ 1, # 1 for x_bdd, boundary encoding
                 edge_dim=1 if args.dataset.startswith("mppde1de") else 2,
                 nmax=torch.tensor(50000),
                 latent_dim=args.latent_size,

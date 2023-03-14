@@ -487,10 +487,6 @@ def add_rl_args(parser):
                         help="if is_eval_sample ")
     parser.add_argument('--debug', type=eval,
                         help="if debug mode ")
-    parser.add_argument('--is_1d_periodic', type=eval,
-                        help="if is_1d_periodic")
-    parser.add_argument('--is_normalize_pos', type=eval,
-                        help="if is_normalize_pos")
     parser.add_argument('--fine_tune_gt_input', type=eval,
                         help="if fine_tune_gt_input")
     parser.add_argument('--soft_update', type=eval,
@@ -555,8 +551,6 @@ def add_rl_args(parser):
         
         is_alternating_train=False,
         is_eval_sample=True,
-        is_1d_periodic=False,
-        is_normalize_pos=True,
         value_steps=None,
         actor_steps=None,
         test_data_interp=False,

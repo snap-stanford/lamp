@@ -25,7 +25,7 @@ sys.path.append(os.path.join(os.path.dirname("__file__"), '..'))
 sys.path.append(os.path.join(os.path.dirname("__file__"), '..', '..'))
 sys.path.append(os.path.join(os.path.dirname("__file__"), '..', '..', '..'))
 from lamp.datasets.arcsimmesh_dataset import ArcsimMesh
-from lamp.datasets.mppde1d_dataset import get_data_pred, update_edge_attr_1d, update_rel_pos
+from lamp.datasets.mppde1d_dataset import get_data_pred, update_edge_attr_1d
 from lamp.pytorch_net.util import to_np_array, init_args, to_cpu, Attr_Dict
 from lamp.pytorch_net.net import fill_triangular, matrix_diag_transform
 from lamp.utils_model import FCBlock
@@ -235,8 +235,6 @@ def get_data_dropout(data, dropout_mode, exclude_idx=None, sample_idx=None):
         else:
             length = data.x.shape[0]
             device = data.x.device
-        is_1d_periodic = hasattr(data, "is_1d_periodic") and to_tuple_shape(data.is_1d_periodic)
-        is_normalize_pos = False if hasattr(data, "is_normalize_pos") and (not to_tuple_shape(data.is_normalize_pos)) else True
         nx = dict(to_tuple_shape(data.original_shape))["n0"][0]
         batch_size = length // nx
         edge_index_new_list = []
@@ -261,10 +259,6 @@ def get_data_dropout(data, dropout_mode, exclude_idx=None, sample_idx=None):
                 edge_index_new = data.edge_index[("n0", "0", "n0")][:,:(nx_new-1)*2]
             else:
                 edge_index_new = data.edge_index[:,:(nx_new-1)*2]
-            if is_1d_periodic:
-                edge_index_he = torch.tensor([[0], [nx_new-1]], device=device)
-                edge_index_eh = torch.tensor([[nx_new-1], [0]], device=device)
-                edge_index_new = torch.cat([edge_index_new, edge_index_he, edge_index_eh], -1)
 
             if exclude_idx is None:
                 idx = np.sort(np.random.choice(np.arange(1, nx-1), size=nx_new-2, replace=False))
@@ -294,13 +288,9 @@ def get_data_dropout(data, dropout_mode, exclude_idx=None, sample_idx=None):
                 "dataset": to_tuple_shape(data.dataset),
                 "mask": {"n0": data.mask["n0"]},
                 "batch": batch,
-                "is_1d_periodic": data.is_1d_periodic,
-                "is_normalize_pos": data.is_normalize_pos,
             })
             if hasattr(data, "edge_attr"):
                 rel_pos = data_new.node_pos["n0"][data_new.edge_index[("n0", "0", "n0")][0]] - data_new.node_pos["n0"][data_new.edge_index[("n0", "0", "n0")][1]]
-                if is_1d_periodic:
-                    rel_pos = update_rel_pos(rel_pos, is_normalize_pos=is_normalize_pos)
                 if data.edge_attr[("n0", "0", "n0")].shape[-1] == 1:
                     data_new["edge_attr"] = {("n0", "0", "n0"): rel_pos}
                 elif data.edge_attr[("n0", "0", "n0")].shape[-1] == 2:
@@ -321,13 +311,9 @@ def get_data_dropout(data, dropout_mode, exclude_idx=None, sample_idx=None):
                 dataset=to_tuple_shape(data.dataset),
                 mask=data.mask,
                 batch=batch,
-                is_1d_periodic=data.is_1d_periodic,
-                is_normalize_pos=data.is_normalize_pos,
             )
             if hasattr(data, "edge_attr"):
                 rel_pos = data_new.x_pos[data_new.edge_index[0]] - data_new.x_pos[data_new.edge_index[1]]
-                if is_1d_periodic:
-                    rel_pos = update_rel_pos(rel_pos, is_normalize_pos=is_normalize_pos)
                 if data.edge_attr.shape[-1] == 1:
                     data_new.edge_attr = rel_pos
                 elif data.edge_attr.shape[-1] == 2:
@@ -1146,10 +1132,7 @@ class GNNRemesher(nn.Module):
                 **kwargs
             )
             x_core = data.x[..., :self.output_size]
-            if hasattr(data, "is_1d_periodic") and to_tuple_shape(data.is_1d_periodic):
-                lst = [x_core]
-            else:
-                lst = [x_core, data.x_bdd]
+            lst = [x_core, data.x_bdd]
             if use_pos:
                 lst.insert(1, data.x_pos)
             if hasattr(data, "dataset") and to_tuple_shape(data.dataset).startswith("mppde1dh"):
@@ -1650,10 +1633,7 @@ class GNNRemesherPolicy(GNNRemesher):
             )
             # pdb.set_trace()
             x_core = data.x[..., :self.output_size]
-            if hasattr(data, "is_1d_periodic") and to_tuple_shape(data.is_1d_periodic):
-                lst = [x_core]
-            else:
-                lst = [x_core, data.x_bdd]
+            lst = [x_core, data.x_bdd]
             if use_pos:
                 lst.insert(1, data.x_pos)
             data.x = torch.cat(lst, -1)
@@ -2575,16 +2555,10 @@ class GNNRemesherPolicy(GNNRemesher):
         outmesh.x_pos = torch.cat([outmesh.x_pos, split_pts_pos], 0)
         
         if outmesh.xfaces.shape[0] == 0:
-            if hasattr(outmesh, "is_1d_periodic") and to_tuple_shape(outmesh.is_1d_periodic):
-                if not (outmesh.x.shape[0] - outmesh.edge_index.shape[1]/2) == 0:
-                    print("Split is invalid")
-                    pdb.set_trace()
-                    return None
-            else:
-                if not (outmesh.x.shape[0] - outmesh.edge_index.shape[1]/2) == outmesh.batch.max()+1:
-                    print("Split is invalid")
-                    pdb.set_trace()
-                    return None
+            if not (outmesh.x.shape[0] - outmesh.edge_index.shape[1]/2) == outmesh.batch.max()+1:
+                print("Split is invalid")
+                pdb.set_trace()
+                return None
         else:
             outmesh.xfaces = torch.cat([all_refined_faces, remained_faces], dim=-1)
             if not (outmesh.x.shape[0] + outmesh.xfaces.shape[1] - outmesh.edge_index.shape[1]/2) == outmesh.batch.max()+1:
@@ -3797,9 +3771,8 @@ class GNNPolicySizing(GNNRemesherPolicy):
 
             if self.dataset.startswith("mpp"):
                 outmesh.dataset = to_tuple_shape(outmesh.dataset)
-                if not (hasattr(outmesh, "is_1d_periodic") and to_tuple_shape(outmesh.is_1d_periodic)):
-                    outmesh.x[:,-1] = 1*(outmesh.x[:,-1]==1)
-                    outmesh.x_bdd = outmesh.x[:,-1:]
+                outmesh.x[:,-1] = 1*(outmesh.x[:,-1]==1)
+                outmesh.x_bdd = outmesh.x[:,-1:]
                 outmesh = update_edge_attr_1d(outmesh)
             logsigmoid_sum, entropy_sum = self.get_batch_logsigmoid_sum(remesh_prob,self.current_batch,self.is_single_action)
             return outmesh, logsigmoid_sum, entropy_sum, remesh_prob
@@ -3810,9 +3783,8 @@ class GNNPolicySizing(GNNRemesherPolicy):
                 remesh_prob['coarse_prob'] = max_probs
                 if self.dataset.startswith("mpp"):
                     outmesh.dataset = to_tuple_shape(outmesh.dataset)
-                    if not (hasattr(outmesh, "is_1d_periodic") and to_tuple_shape(outmesh.is_1d_periodic)):
-                        outmesh.x[:,-1] = 1*(outmesh.x[:,-1]==1)
-                        outmesh.x_bdd = outmesh.x[:,-1:]
+                    outmesh.x[:,-1] = 1*(outmesh.x[:,-1]==1)
+                    outmesh.x_bdd = outmesh.x[:,-1:]
                     outmesh = update_edge_attr_1d(outmesh)
                 if self.dataset.startswith("arcsi"):
                     outmesh.history = (old_x_coords,outmesh.x_coords)   
@@ -3835,9 +3807,8 @@ class GNNPolicySizing(GNNRemesherPolicy):
 
                 if self.dataset.startswith("mpp"):
                     outmesh.dataset = to_tuple_shape(outmesh.dataset)
-                    if not (hasattr(outmesh, "is_1d_periodic") and to_tuple_shape(outmesh.is_1d_periodic)):
-                        outmesh.x[:,-1] = 1*(outmesh.x[:,-1]==1)
-                        outmesh.x_bdd = outmesh.x[:,-1:]
+                    outmesh.x[:,-1] = 1*(outmesh.x[:,-1]==1)
+                    outmesh.x_bdd = outmesh.x[:,-1:]
                     outmesh = update_edge_attr_1d(outmesh)
                 logsigmoid_sum, entropy_sum = self.get_batch_logsigmoid_sum(remesh_prob,self.current_batch,self.is_single_action)
                 return outmesh, logsigmoid_sum, entropy_sum, remesh_prob
@@ -4546,14 +4517,12 @@ class GNNPolicyAgent(GNNRemesherPolicy):
                 outmesh.history = (old_x_coords,outmesh.x_coords)
                 outmesh.batch_history = old_batch
             
-            if not (hasattr(outmesh, "is_1d_periodic") and to_tuple_shape(outmesh.is_1d_periodic)):
-                outmesh.x_bdd = outmesh.x[:,-1:]
+            outmesh.x_bdd = outmesh.x[:,-1:]
             if self.dataset.startswith("m"):
                 outmesh.dataset = to_tuple_shape(outmesh.dataset)
                 #reset bdd nodes, all interpolate boundary node are removed
-                if not (hasattr(outmesh, "is_1d_periodic") and to_tuple_shape(outmesh.is_1d_periodic)):
-                    outmesh.x[:,-1] = 1*(outmesh.x[:,-1]==1)
-                    outmesh.x_bdd = outmesh.x[:,-1:]
+                outmesh.x[:,-1] = 1*(outmesh.x[:,-1]==1)
+                outmesh.x_bdd = outmesh.x[:,-1:]
                 outmesh = update_edge_attr_1d(outmesh)
             logsigmoid_sum, entropy_sum = self.get_batch_logsigmoid_sum(remesh_prob,self.current_batch,self.is_single_action)
             return outmesh, logsigmoid_sum, entropy_sum, remesh_prob
@@ -4590,9 +4559,8 @@ class GNNPolicyAgent(GNNRemesherPolicy):
                 if self.dataset.startswith("m"):
                     outmesh.dataset = to_tuple_shape(outmesh.dataset)
                     #reset bdd nodes, all interpolate boundary node are removed
-                    if not (hasattr(outmesh, "is_1d_periodic") and to_tuple_shape(outmesh.is_1d_periodic)):
-                        outmesh.x[:,-1] = 1*(outmesh.x[:,-1]==1)
-                        outmesh.x_bdd = outmesh.x[:,-1:]
+                    outmesh.x[:,-1] = 1*(outmesh.x[:,-1]==1)
+                    outmesh.x_bdd = outmesh.x[:,-1:]
                     outmesh = update_edge_attr_1d(outmesh)
                     p.print("2.228", precision="millisecond", is_silent=is_timing<3, avg_window=1)
                 logsigmoid_sum, entropy_sum = self.get_batch_logsigmoid_sum(remesh_prob, self.current_batch, self.is_single_action)
@@ -5174,8 +5142,7 @@ class GNNPolicyAgent_Sampling(GNNRemesherPolicy):
         values, _ = outmesh.edge_index.sort(dim=0)
         tor_samnodes = values.unique(dim=-1).T
         if self.dataset.startswith("m"):
-            is_normalize_pos = False if hasattr(outmesh, "is_normalize_pos") and (not to_tuple_shape(outmesh.is_normalize_pos)) else True
-            boundary_loc = 0.16 if is_normalize_pos else 16
+            boundary_loc = 0.16
             idx = torch.where((torch.abs(outmesh.x_pos[tor_samnodes[:, 0]]-boundary_loc)>1e-6) | (torch.abs(outmesh.x_pos[tor_samnodes[:, 1]])>1e-6))[0]
             tor_samnodes = tor_samnodes[idx]
             idx = torch.where((torch.abs(outmesh.x_pos[tor_samnodes[:, 1]]-boundary_loc)>1e-6) | (torch.abs(outmesh.x_pos[tor_samnodes[:, 0]])>1e-6))[0]
@@ -5230,8 +5197,7 @@ class GNNPolicyAgent_Sampling(GNNRemesherPolicy):
             split_edges: edges to be coarsened with shape [(number of edges to be coarsened), 2].
         """     
         if torchmesh.xfaces.shape[0] == 0:
-            is_normalize_pos = False if hasattr(torchmesh, "is_normalize_pos") and (not to_tuple_shape(torchmesh.is_normalize_pos)) else True
-            boundary_loc = 0.16 if is_normalize_pos else 16
+            boundary_loc = 0.16
             values, _ = torchmesh.edge_index.sort(dim=0)
             tor_samnodes = values.unique(dim=-1).T
             idx = torch.where(torch.abs(torchmesh.x_pos[tor_samnodes[:, 0]]-boundary_loc)>1e-6)[0]
@@ -5344,7 +5310,6 @@ class GNNPolicyAgent_Sampling(GNNRemesherPolicy):
             torchmesh: mesh data with coarsened vertices, edges, and faces.
         """
         if torchmesh.xfaces.shape[0] == 0:
-            is_1d_periodic = True if hasattr(torchmesh, "is_1d_periodic") and to_tuple_shape(torchmesh.is_1d_periodic) else False
             p.print("2.2251", precision="millisecond", is_silent=not is_timing, avg_window=1)
             collapsed_edges, merging_nodes, logp, entropyp, info = self.choose_onedim_coarsen_edges_GNN_topk(torchmesh,reward_beta=reward_beta,K_coarse=K_coarse,is_timing=is_timing,is_eval_sample=is_eval_sample)
             p.print("2.2252", precision="millisecond", is_silent=not is_timing, avg_window=1)
@@ -5358,7 +5323,7 @@ class GNNPolicyAgent_Sampling(GNNRemesherPolicy):
             p.print("2.2253", precision="millisecond", is_silent=not is_timing, avg_window=1)
             new_edge_index, new_x, new_x_phys, new_x_batch, new_x_pos = self.clean_onedim_isolated_vertices(torchmesh, new_edge_index)
             p.print("2.2254", precision="millisecond", is_silent=not is_timing, avg_window=1)
-            if not (new_x.shape[0] - int(new_edge_index.shape[1]/2)) == (0 if is_1d_periodic else torchmesh.batch.max()+1):
+            if not (new_x.shape[0] - int(new_edge_index.shape[1]/2)) == (torchmesh.batch.max()+1):
                 print("Coarsen is invalid")
                 return torchmesh
 
@@ -5573,9 +5538,8 @@ class GNNPolicyAgent_Sampling(GNNRemesherPolicy):
         if self.dataset.startswith("m"):
             outmesh.dataset = to_tuple_shape(outmesh.dataset)
             #reset bdd nodes, all interpolate boundary node are removed
-            if not (hasattr(outmesh, "is_1d_periodic") and to_tuple_shape(outmesh.is_1d_periodic)):
-                outmesh.x[:,-1] = 1*(outmesh.x[:,-1]==1)
-                outmesh.x_bdd = outmesh.x[:,-1:]
+            outmesh.x[:,-1] = 1*(outmesh.x[:,-1]==1)
+            outmesh.x_bdd = outmesh.x[:,-1:]
             outmesh = update_edge_attr_1d(outmesh)
             p.print("2.228", precision="millisecond", is_silent=not is_timing, avg_window=1)
         p.print("2.229", precision="millisecond", is_silent=not is_timing, avg_window=1)

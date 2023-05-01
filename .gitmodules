@@ -1,0 +1,6 @@
+[submodule "pytorch_net"]
+	path = pytorch_net
+	url = git@github.com:tailintalent/pytorch_net.git
+[submodule "MP_Neural_PDE_Solvers"]
+	path = MP_Neural_PDE_Solvers
+	url = git@github.com:tailintalent/MP_Neural_PDE_Solvers.git

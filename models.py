@@ -1310,8 +1310,8 @@ def get_interp(data,args):
     batch_fine = data_clone.batch
     x = data.node_feature['n0']
     
-    x_pos_incremented = x_pos + batch[:,None]*10
-    x_pos_fine_incremented = x_pos_fine + batch_fine[:,None]*10
+    x_pos_incremented = x_pos + batch[:,None]*500
+    x_pos_fine_incremented = x_pos_fine + batch_fine[:,None]*500
 
     x_pos_incremented = x_pos_incremented.permute(1,0).repeat([x.shape[1],1])
     x_pos_fine_incremented = x_pos_fine_incremented.permute(1,0).repeat([x.shape[1],1])

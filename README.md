@@ -111,6 +111,8 @@ For commands for baseline models in 1D, see the README in [./MP_Neural_PDE_Solve
 
 * For 2D experiments, to analyze the full model for LAMP and the baselines, use [analysis_2D_full.py](https://github.com/snap-stanford/lamp/blob/master/analysis_2d_full.py) and [analysis_2d_rl.ipynb](https://github.com/snap-stanford/lamp/blob/master/analysis_2d_rl.ipynb).
 
+To use our pretrained models, they are stored [here](https://drive.google.com/drive/folders/1ioR5gjYeQaNQMvqrdMYMZI-0n5k5UM8f). Put the folders in the Google doc (e.g., "evo-2d_2023-02-18"), under the ./results/ folder, and can then use the analysis script above to analyze.
+
 ## Visualization:
 
 Example visualization of learned remeshing & evolution:

@@ -1264,7 +1264,7 @@ def get_loss_2d_refined(data_pred, data_gt, current_step,opt_evl=False):
         return batch_mse(torch.sqrt(mse.sum(dim=1)), data_pred.batch)[:,None],batch_mse((mse.sum(dim=1)), data_pred.batch, mean=True)[:,None], interp_gtar_coords
 
 
-def get_loss_refined(data_pred, data_gt, current_step,):
+def get_loss_refined(data_pred, data_gt, current_step, sep_length=500):
     #here the implementation assume 1d case
     x_pos = data_pred.node_pos['n0']
     batch = data_pred.batch
@@ -1275,10 +1275,10 @@ def get_loss_refined(data_pred, data_gt, current_step,):
     batch_gt = data_gt.batch
     batch = data_pred.batch
 
-    x_pos_incremented = x_pos + batch[:,None]*500
+    x_pos_incremented = x_pos + batch[:,None]*sep_length
     x_pos_incremented_idx = torch.argsort(x_pos_incremented[:,0])
     x_pos_incremented = x_pos_incremented[x_pos_incremented_idx]
-    x_pos_gt_incremented = x_pos_gt + batch_gt[:,None]*500
+    x_pos_gt_incremented = x_pos_gt + batch_gt[:,None]*sep_length
 
     x_pos_gt_incremented = x_pos_gt_incremented.permute(1,0).repeat([pred.shape[1],1])
     x_pos_incremented = x_pos_incremented.permute(1,0).repeat([pred.shape[1],1])
@@ -1310,8 +1310,8 @@ def get_interp(data,args):
     batch_fine = data_clone.batch
     x = data.node_feature['n0']
     
-    x_pos_incremented = x_pos + batch[:,None]*500
-    x_pos_fine_incremented = x_pos_fine + batch_fine[:,None]*500
+    x_pos_incremented = x_pos + batch[:,None]*10
+    x_pos_fine_incremented = x_pos_fine + batch_fine[:,None]*10
 
     x_pos_incremented = x_pos_incremented.permute(1,0).repeat([x.shape[1],1])
     x_pos_fine_incremented = x_pos_fine_incremented.permute(1,0).repeat([x.shape[1],1])
@@ -1521,6 +1521,7 @@ def full_forward(
         data_008_not_remeshed_gt = data008.clone()
         data_heuristic_gt_evl = data.clone().detach()
     p.print("2.21", precision="millisecond", is_silent=args.is_timing<2, avg_window=1)
+    sep_length = 10 if args.dataset.startswith("mppde") else 500  # sep_length is used to seperate the different graphs' x_pos in one minibatch
     for k in range(horizon):  # k=0,1,...H-1
         ##################################################
         # Take action, zk=(xk,mk);   --ak--> z_{k+1}'=(xk,m_{k+1}), logprob_k, entropy_k
@@ -2044,8 +2045,8 @@ def full_forward(
                 record_data(info, [loss], ["evolution/loss"])
                 
             else:
-                loss = get_loss_refined(data, data_finegrain, k)
-                loss_alt = get_loss_refined(data_alt, data_finegrain, k)  
+                loss = get_loss_refined(data, data_finegrain, k, sep_length=sep_length)
+                loss_alt = get_loss_refined(data_alt, data_finegrain, k, sep_length=sep_length)  
                 record_data(info, [loss_alt], ["evolution/loss_alt"])
                 record_data(info, [loss], ["evolution/loss"])
             if not (mode=="test_remeshing"):     
@@ -2085,11 +2086,11 @@ def full_forward(
                     record_data(info, [loss_fine], ["evolution/loss_fine"])
                     record_data(info, [loss_fine_mse], ["evolution/loss_fine_mse"])
                 else:
-                    loss_fine = get_loss_refined(data_fine, data_finegrain, k)  
+                    loss_fine = get_loss_refined(data_fine, data_finegrain, k, sep_length=sep_length)  
                     record_data(info, [loss_fine], ["evolution/loss_fine"])
 
             if args.test_data_interp and step_num%args.wandb_step_plot==0:
-                loss_interp_alt = get_loss_refined(data_interp_alt, data_finegrain, k)
+                loss_interp_alt = get_loss_refined(data_interp_alt, data_finegrain, k, sep_length=sep_length)
                 reward_interp_alt, reward_interp_alt_info = get_reward_batch(
                     loss=loss_interp_alt,
                     state=state_preds_interp_alt,

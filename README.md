@@ -1,6 +1,6 @@
 # LAMP: Learning Controllable Adaptive Simulation for Multi-resolution Physics (ICLR 2023 Notable-Top-25%)
 
-[Paper](https://openreview.net/forum?id=PbfgkZ2HdbE) | [arXiv](https://arxiv.org/abs/2305.01122) | [Poster](https://github.com/snap-stanford/lamp/blob/master/assets/lamp_poster.pdf) | [Slides](https://docs.google.com/presentation/d/1cMRGe2qNIrzSNRTUtbsVUod_PvyhDHcHzEa8wfxiQsw/edit?usp=sharing) | [Project Page](https://snap.stanford.edu/lamp/)
+[Paper](https://openreview.net/forum?id=PbfgkZ2HdbE) | [arXiv](https://arxiv.org/abs/2305.01122) | [Poster](https://github.com/snap-stanford/lamp/blob/master/assets/lamp_poster.pdf) | [Slides](https://docs.google.com/presentation/d/1cMRGe2qNIrzSNRTUtbsVUod_PvyhDHcHzEa8wfxiQsw/edit?usp=sharing) | [Tweet](https://twitter.com/tailin_wu/status/1653253117671272448) | [Project Page](https://snap.stanford.edu/lamp/) 
 
 Official repo for the paper [Learning Controllable Adaptive Simulation for Multi-resolution Physics](https://openreview.net/forum?id=PbfgkZ2HdbE)<br />
 [Tailin Wu*](https://tailin.org/), [Takashi Maruyama*](https://sites.google.com/view/tmaruyama/home), [Qingqing Zhao*](https://cyanzhao42.github.io/), [Gordon Wetzstein](https://stanford.edu/~gordonwz/), [Jure Leskovec](https://cs.stanford.edu/people/jure/)<br />
